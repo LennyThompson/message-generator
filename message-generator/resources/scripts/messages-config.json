@@ -1,0 +1,39 @@
+{
+"MessageConfig":{
+    "SourceRoot": "E:/dev/cougar/rocksdb/gaming-cougar-source/",
+    "Source": [
+      "CougarMessages/Include/JTProtocol/JTProtocolDefs.h",
+      "CougarBase/Include/JTProtocolPlatform/JTProtocolPlatform.h",
+      "CougarMessages/Include/JTProtocol/JTProtocol.h",
+      "CougarMessages/Include/JTProtocol/CSS_JTProtocolDefs.h",
+      "CougarMessages/Include/JTProtocol/CSS_JTProtocol.h",
+      "CougarMessages/Include/JTProtocol/CssPOPBProtocol.h",
+      "CougarMessages/Include/JTProtocol/CmProtocol.h",
+      "CougarMessages/Include/JTProtocol/JDSProtocol.h",
+      "CougarMessages/Include/JTProtocol/POPBProtocol.h",
+      "CougarMessages/Include/JTProtocol/KenoProtocol.h"
+    ],
+    "ComponentMapping" : "./schema/cougar-components.json",
+    "Destination": {
+      "Root": "./generated/cougar-messaging/",
+      "Messages": "cougar-messages/",
+      "Include": "include/",
+      "Helpers": "message-helpers/"
+    },
+    "MessageLimit": 500,
+    "HelperLimit": 250,
+    "HelperDir": "helpers",
+    "GenerateJava": true,
+    "PackageName": "com.cougar.messages",
+    "AggregateSource": true,
+    "GenerateTypes": true,
+    "mongo-metadata": "./src/main/resources/scripts/cougar-messages-metadata.json"
+  },
+  "ApiConfig": {
+    "Source": "./schema/cougar-schema-5.xml",
+    "DestinationPath": "./generated/api",
+    "GenerateCpp": true,
+    "CppDestinationPath": "./generated/cpp",
+    "JsonSource": "./generated/api/schema.json"
+  }
+}

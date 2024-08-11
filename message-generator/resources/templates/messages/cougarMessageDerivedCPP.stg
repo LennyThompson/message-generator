@@ -1,0 +1,52 @@
+import "common.stg"
+
+messageMemberGetterSetter(member) ::= <<
+void set<member.strippedName>(<member.type> from)
+{   <member.name> = from;   }
+<member.type> get<member.strippedName>() const
+{   return <member.name>;   }
+>>
+
+messageMemberAssignFromRaw(member, source) ::= <%
+<member.name> = <source>.<member.name>;
+%>
+
+declareCougarMessage(message) ::= <<
+
+class C<message.planeName> : public <message.name>, ICougarMessage
+{
+public:
+
+    C<message.planeName>()
+    {
+    }
+
+    C<message.planeName>(const <message.name>& messageRaw)
+    {
+    }
+
+    virtual ~C<message.planeName>()
+    {
+    }
+
+public:
+
+    enum Message
+    {
+        ID = <message.define.name>,
+        ID_VALUE = <if(message.hasNumericDefine)><message.defineId><else><message.preprocessorDefineId><endif>,
+        SIZE = sizeof(<message.name>)
+    };
+
+
+    // Getters and setters
+
+    <message.members :{member | <messageMemberGetterSetter(member)>};separator="\n">
+};
+
+>>
+
+declareCougarMessages(listMsgs) ::= <<
+
+<listMsgs : {message | <declareCougarMessage(message)>}>
+>>

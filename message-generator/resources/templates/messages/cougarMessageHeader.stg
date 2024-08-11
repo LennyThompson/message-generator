@@ -1,0 +1,146 @@
+import "common.stg"
+
+declareCougarMessageMap(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#pragma once
+
+#ifdef _TEST_BED_
+#include "std-cougar.h"
+#else
+#include \<JTStandard.h>
+#include "JTProtocolStd.h"
+#endif
+
+#include "cougar-messages-import.h"
+
+#include \<functional>
+#include \<map>
+#include \<memory>
+#include \<vector>
+#include \<set>
+#include \<stdint.h>
+// Rapidjson implementation...
+#include \<rapidjson/fwd.h>
+#include "cougar-consumer-builder.h"
+
+#ifdef _USING_MONGO
+#include \<bsoncxx/builder/basic/document.hpp>
+#include \<bsoncxx/json.hpp>
+#endif
+
+class IMessageHelper;
+typedef std::shared_ptr\<IMessageHelper> IMessageHelperPtr_t;
+typedef std::map\<int32_t, IMessageHelperPtr_t> MessageMap_t;
+typedef std::map\<int32_t, std::string> JSONTemplateMap_t;
+typedef bool (*FnUpdater_t)(void*, const rapidjson::Value&, const char*);
+typedef std::map\<std::string, FnUpdater_t*> UpdaterMap_t;
+using MessageIdList_t = std::set\<uint16_t>;
+using MessageIdListPtr_t = std::shared_ptr\<MessageIdList_t>;
+
+// Helper functions for base64 serialisation of message binary
+
+std::string base64_encode(uint8_t const* buf, size_t bufLen);
+std::vector\<uint8_t> base64_decode(std::string const&);
+
+<schema.messageHelperFnNames:{fnName|const IMessageHelperPtr_t& <fnName>(size_t nMsgId);<\n>}>
+const IMessageHelperPtr_t& getUnknownCougarMessage(size_t nMsgId);
+
+class CPOMsgEx;
+typedef std::shared_ptr\<CPOMsgEx> CPOMsgExPtr_t;
+
+enum ECougarComponent
+{
+    componentUnknown,
+    <schema.allComponents:{component|component<component>};separator=",\n">
+};
+
+ECougarComponent getComponentEnum(const std::string& strName);
+
+enum ECougarWabFilter
+{
+    <schema.wabFilters:{wabFilter|wabFilter<wabFilter>};separator=",\n">
+};
+
+struct MessageWABFilter
+{
+    uint16_t m_uMsgId;
+    int m_nFilterOffset;
+    int m_nFilterByteSize;
+};
+
+using MessageWABFilterList_t = std::set\<MessageWABFilter>;
+using MessageWABFilterListPtr_t = std::shared_ptr\<MessageWABFilterList_t>;
+
+#ifdef _USING_MONGO
+using BsonDocumentPtr_t = std::shared_ptr\<bsoncxx::builder::basic::document>;
+#endif
+
+class CougarMessages
+{
+public:
+
+    static _COUGAR_MESSAGES_API const char* getMessageName(uint32_t uMessageId);
+    static _COUGAR_MESSAGES_API const char* getMessageId(uint32_t uMessageId);
+    static _COUGAR_MESSAGES_API int32_t getMessageSiteId(const CPOMsgEx& msgFrom);
+    static _COUGAR_MESSAGES_API size_t getMessageHash(const CPOMsgEx& msgFrom);
+    static _COUGAR_MESSAGES_API std::string getMessageAsJSON(const CPOMsgEx& msgFrom, const std::string& strTimestamp, size_t nUID = 0);
+    static _COUGAR_MESSAGES_API bool getMessageFromJSON(CPOMsgExPtr_t& msgTo, const rapidjson::Value& jsonFrom, uint32_t uMsgId = 0);
+    static _COUGAR_MESSAGES_API std::string getJSONTemplates(int32_t nFunctionId);
+    static _COUGAR_MESSAGES_API bool updateMessageFromTemplate(const CPOMsgExPtr_t& msgFrom, CPOMsgExPtr_t& msgTo, const rapidjson::Value& jsonFrom);
+    static _COUGAR_MESSAGES_API std::string getJSONUpdateTemplates(int32_t nFunctionId);
+    static _COUGAR_MESSAGES_API std::string getBase64Encoded(const CPOMsgExPtr_t& msgFrom);
+    static _COUGAR_MESSAGES_API std::string getBase64Encoded(const CPOMsgEx* pmsgFrom);
+    static _COUGAR_MESSAGES_API bool getFromBase64Encoded(WORD wFunctionNumber, const std::string& strEncoded, CPOMsgExPtr_t& msgTo);
+
+#ifdef _USING_MONGO
+    static _COUGAR_MESSAGES_API bool appendMessageToBSON(BsonDocumentPtr_t& bsonDoc, const CPOMsgEx& msgBase, size_t nUID);
+    static _COUGAR_MESSAGES_API bool getMessageFromBSON(CPOMsgExPtr_t& msgTo, const bsoncxx::document::view& bsonView, FILETIME& ftTimestamp, int& nSiteID, int& nCSsSiteID, int& nPriority);
+#endif
+
+    static _COUGAR_MESSAGES_API bool consumerFilter(const CPOMsgEx* pmsgFilter, ECougarComponent cougarComponent);
+    static _COUGAR_MESSAGES_API bool generatorFilter(const CPOMsgEx* pmsgFilter, ECougarComponent cougarComponent);
+    static _COUGAR_MESSAGES_API bool wabFilter(const CPOMsgEx* pmsgFilter, ECougarWabFilter wabFilter);
+    static _COUGAR_MESSAGES_API bool wabFilter(uint16_t uMsgId, ECougarWabFilter wabFilter);
+    static _COUGAR_MESSAGES_API bool wabFilterAsList(ECougarWabFilter wabFilter, MessageIdListPtr_t& listMsgs);
+    static _COUGAR_MESSAGES_API bool WabFilterAsList(ECougarWabFilter wabFilter, MessageWABFilterListPtr_t& listMsgFilters);
+    static _COUGAR_MESSAGES_API bool AllMessages(MessageIdListPtr_t& listMsgs);
+
+    static _COUGAR_MESSAGES_API bool registerForComponent(const std::vector\<ECougarComponent>& componentRegistered, MessageSubscriberFn_t fnSubscribe);
+    static _COUGAR_MESSAGES_API bool registerForWabFilter(const std::vector\<ECougarWabFilter>& listFilters, MessageSubscriberFn_t fnSubscribe);
+
+public:
+
+    static MessageMap_t MESSAGE_MAP;
+    static JSONTemplateMap_t JSON_TEMPLATES;
+    static JSONTemplateMap_t JSON_UPDATE_TEMPLATES;
+};
+>>
+
+declareJTProtocolStdHeader(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#pragma once
+
+#include "JTProtocol.h"
+#include "POPBProtocol.h"
+#include "RAPIDProtocol.h"
+#include "NonProtocolDefs.h"
+>>
+
+declareCougarMessagesImport(schema) ::=
+<<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#pragma once
+
+#ifdef _COUGAR_MESSAGES_BUILD
+#define _COUGAR_MESSAGES_API __declspec(dllexport)
+#else
+#define _COUGAR_MESSAGES_API __declspec(dllimport)
+#endif
+
+>>

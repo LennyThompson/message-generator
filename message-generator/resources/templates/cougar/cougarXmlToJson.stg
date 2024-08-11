@@ -1,0 +1,258 @@
+generateParentReference(member, parentRef) ::= <<
+"parentRef": {
+    "parentType": "<parentRef.referencedType.name>",
+    "referencingMembers": [
+        <parentRef.referencingMembers:{member|"<member.name>"};separator=",\n">
+     ],
+    "referenceMembers": [
+        <parentRef.referenceMembers:{member|"<member.name>"};separator=",\n">
+     ],
+    "nullable": <if(parentRef.isNullable)>true<else>false<endif>,
+    "multiKey": <if(parentRef.isMultiKey)>true<else>false<endif>,
+    "cardinality": "<if(parentRef.isListReference)>list<else>single<endif>"
+}
+>>
+
+generateSelectList(member, selectList) ::= <<
+"selectList": {
+    "associated":[
+        <selectList.associated:{assoc|{"member": "<assoc.member.name>", "cardinality": "<if(assoc.isSingle)>single<else>list<endif>"\}};separator=",\n">
+    ]
+}
+>>
+
+generateMemberJson(member) ::= <<
+{
+    "name": "<member.name>",
+    "type": "<member.type>",
+    "id": <member.id>,
+    "typescriptType": "<member.rawTypescriptType>",
+    "boltType": "<member.boltType>",
+    "cardinality": "<if(member.isList)>list<else>single<endif>",
+    "size": <member.size>,
+    "primaryKey": <if(member.isPrimaryKey)>true<else>false<endif>,
+    "isParentReference": <if(member.isParentReference)>true<else>false<endif>,
+    <if(member.isParentReference)><generateParentReference(member, member.parentReference)>,<endif>
+    "isSelectList": <if(member.isSelectList)>true<else>false<endif>,
+    <if(member.isSelectList)><generateSelectList(member, member.selectList)>,<endif>
+    "isExternalMember": false,
+    "isForeignKey": false
+}
+>>
+
+generateExternalKeyReference(extKey) ::= <<
+{
+    "localField": <generateMemberJson(extKey.externalMember)>,
+    "referenceField": "<extRef.localMember.name>"
+}
+>>
+
+generateExternalMember(member) ::= <<
+{
+    "name": "<member.name>",
+    "type": "<member.type>",
+    "id": <member.id>,
+    "typescriptType": "<member.referencedType.className>",
+    "boltType": "<member.referencedType.className>",
+    "cardinality": "<if(member.isList)>list<else>single<endif>",
+    "size": <if(member.size)><member.size><else>0<endif>,
+    "primaryKey": <if(member.isPrimaryKey)>true<else>false<endif>,
+    "isStringLike": false,
+    "isDateTime": false,
+    "isExternalMember": true,
+    "isForeignKey": false,
+    "referencedType": "<member.referencedType.name>",
+    "referencedMember": "<member.referencedMember.name>",
+    "referenceType": "<member.referenceType>",
+    "isMultiKey": <if(member.isMultiKey)>true<else>false<endif>,
+    "isNullable": <if(member.isNullable)>true<else>false<endif>,
+    "referenceCount": <member.referenceMemberCount>,
+    "keyReferences": [
+        <member.references:{extRef|<generateExternalKeyReference(extRef)>};separator=",\n">
+    ]
+
+}
+>>
+
+generateForeignKeyReference(foreignKey) ::= <<
+{
+    "localField": <generateMemberJson(foreignKey.member)>,
+    "referenceField": "<key.memberReferenced.name>"
+}
+>>
+
+generateForeignKeyMember(member) ::= <<
+{
+    "name": "<member.name>",
+    "type": "<member.type>",
+    "id": <member.id>,
+    "typescriptType": "<member.referencedType.className>",
+    "boltType": "<member.boltType>",
+    "cardinality": "<if(member.isList)>list<else>single<endif>",
+    "size": <if(member.size)><member.size><else>0<endif>,
+    "primaryKey": <if(member.isPrimaryKey)>true<else>false<endif>,
+    "isStringLike": false,
+    "isDateTime": false,
+    "isExternalMember": false,
+    "isForeignKey": true,
+    "referencedType": "<member.referencedType.name>",
+    "referenceType": "<member.referenceType>",
+    "isMultiKey": <if(member.isMultiKey)>true<else>false<endif>,
+    "referenceCount": <member.foreignKeyCount>,
+    "keyReferences": [
+        <member.foreignKeys:{key|<generateForeignKeyReference(key)>};separator=",\n">
+    ]
+
+}
+>>
+
+generateTypeJson(type) ::= <<
+{
+    "name": "<type.name>",
+    "className": "<type.className>",
+    "implementationClassName": "<type.implementationClassName>",
+    "interfaceName": "<type.interfaceName>",
+    "id": <type.id>,
+    "dependencyLevel": <type.dependsLevel>,
+    "dependencies":[
+        <if(type.hasDependencies)><type.dependencies:{depends|"<depends>"};separator=",\n"><endif>
+    ],
+    "fields": [
+        <type.members:{member|<generateMemberJson(member)>};separator=",\n">
+        <if(type.hasForeignKey)>,<\n><type.foreignKeyMembers:{member|<generateForeignKeyMember(member)>};separator=",\n"><endif>
+        <if(type.hasExternalReference)>,<\n><type.externalReferenceMembers:{member|<generateExternalMember(member)>};separator=",\n"><endif>
+    ]
+}
+>>
+
+generateMethodParameter(param) ::= <<
+{
+    "name": "<param.name>",
+    "type": "<param.type>",
+    "ordinal": <param.ordinal>,
+    "cardinality": "<if(param.isList)>list<else>single<endif>",
+    "sourceCardinality": "<if(param.sourceIsList)>list<else>single<endif>",
+    "isQueryParameter": <if(param.isQueryParameter)>true<else>false<endif>,
+    "requestSource": "<if(param.isQueryParameter)>query<else>param<endif>",
+    "isLocalMember": <if(param.isLocalMember)>true<else>false<endif>,
+    "isExternal": <if(param.isExternal)>true<else>false<endif>
+}
+>>
+
+generateApiMethod(method) ::= <<
+{
+    "name": "<method.name>",
+    "path": "<method.path>",
+    "returnType": {
+        "type": "<method.returnType.name>",
+        "cardinality": "<if(method.isReturnList)>list<else>single<endif>"
+    },
+    "source": { "name": "<method.source.className>", "method": "<method.source.methodName>", <if(method.source.isInstance)>"isInstance": true, "instanceName": "<method.source.instanceName>"<else>"isInstance": false<endif> },
+    "parameters": [
+        <method.parameters:{param|<generateMethodParameter(param)>};separator=",\n">
+    ]
+}
+>>
+
+generateApi(api) ::= <<
+{
+    "name": "<api.name>",
+    "root": "<api.root>",
+    "sources": [
+        <api.sources:{source|{ "name": "<source.name>", "file": "<source.file>" \}};separator=",\n">
+    ],
+    "dependencies": [
+        <api.uniqueDependencies:{depends|"<depends.name>"};separator=",\n">
+    ],
+    "methods": [
+        <api.methods:{method|<generateApiMethod(method)>};separator=",\n">
+    ]
+}
+>>
+
+generateUIMemberJson(type, member) ::= <<
+{
+    "name": "<member.name>",
+    "outputName": "<member.typescriptName>",
+    "readOnly": true,
+    "useAs": "",
+    "selectOutput": true,
+    "formField": {
+        "name": "<member.name>",
+        "group": "<type.name>_base"
+    }
+}
+>>
+
+generateUIForeignKeyMember(member) ::= <<
+{
+    "name": "<member.name>",
+    "outputName": "<member.typescriptName>",
+    "readOnly": true,
+    "useAs": "",
+    "selectOutput": true,
+    "formField": {
+        "name": "<member.name>",
+        "group": "<member.referenceType.name>_base"
+    }
+}
+>>
+
+generateUIExternalMember(member) ::= <<
+{
+    "name": "<member.name>",
+    "outputName": "<member.typescriptName>",
+    "readOnly": true,
+    "useAs": "",
+    "selectOutput": true,
+    "formField": {
+        "name": "<member.name>",
+        "group": "<member.referenceType.name>_base"
+    }
+}
+>>
+
+generateUITypeJson(type) ::= <<
+{
+    "table": "<type.name>",
+    "context": "type_<type.boltName>",
+    "outputName": "<type.boltName>",
+    "selectType": {
+        "default": "add-new"
+    },
+    "formType": {
+        "name": "<type.name>_form",
+        "groups": [
+            "<type.name>_base"
+        ]
+    },
+    "members": [
+        <type.members:{member|<generateUIMemberJson(type, member)>};separator=",\n">
+        <if(type.hasForeignKey)>,<\n><type.foreignKeyMembers:{member|<generateUIForeignKeyMember(member)>};separator=",\n"><endif>
+        <if(type.hasExternalReference)>,<\n><type.externalReferenceMembers:{member|<generateUIExternalMember(member)>};separator=",\n"><endif>
+    ]
+}
+>>
+
+generateJson(schemaName, types, apis) ::= <<
+{
+    "schema": {
+        "schemaName": "<schemaName>",
+        "generatedOn": "<first(types).generateDate>",
+        "types": [
+            <types:{type|<generateTypeJson(type)>};separator=",\n">
+        ]
+    },
+    "api": [
+        <apis:{api|<generateApi(api)>};separator=",\n">
+    ],
+    "ui": {
+        "types": [
+            <types:{type|<generateUITypeJson(type)>};separator=",\n">
+        ],
+        "paths": [
+
+        ]
+    }
+}
+>>

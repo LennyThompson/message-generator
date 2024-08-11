@@ -1,0 +1,282 @@
+import "common.stg"
+
+defineCougarMessageMapImpl(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#include "<schema.headerName>"
+#include "<schema.helperHeaderName>"
+#include \<fstream>
+#include \<rapidjson/document.h>
+#include \<POMsgEx.h>
+
+JSONTemplateMap_t CougarMessages::JSON_TEMPLATES;
+
+bool operator \< (const MessageWABFilter& filterLHS, const MessageWABFilter& filterRHS)
+{
+    return filterLHS.m_uMsgId \< filterRHS.m_uMsgId;
+}
+
+std::string CougarMessages::getJSONTemplates(int32_t nFunctionId)
+{
+#ifdef _INLINE_JSON_TEMPLATE
+    return getMessageFinder(nFunctionId)->getJSON_TEMPLATE();
+#else
+    JSONTemplateMap_t::iterator itTemplate = CougarMessages::JSON_TEMPLATES.find(nFunctionId);
+    if(itTemplate == CougarMessages::JSON_TEMPLATES.end())
+    {
+        std::string strJSONFileName = TEMPLATE_PATH;
+        strJSONFileName += getMessageFinder(nFunctionId)->messageName();
+        strJSONFileName += JSON_EXTENSION;
+        std::ifstream fstrmTemplate(strJSONFileName);
+        if(fstrmTemplate.is_open())
+        {
+            std::string strTemplate = std::string((std::istreambuf_iterator\<char>(fstrmTemplate)), (std::istreambuf_iterator\<char>()));
+            CougarMessages::JSON_TEMPLATES.insert(std::make_pair(nFunctionId, strTemplate));
+            itTemplate = CougarMessages::JSON_TEMPLATES.find(nFunctionId);
+        }
+    }
+    return itTemplate->second;
+#endif
+}
+
+std::string CougarMessages::getJSONUpdateTemplates(int32_t nFunctionId)
+{
+#ifdef _INLINE_JSON_TEMPLATE
+    return getMessageFinder(nFunctionId)->getJSON_UPDATE_TEMPLATE();
+#else
+    JSONTemplateMap_t::iterator itTemplate = CougarMessages::JSON_UPDATE_TEMPLATE.find(nFunctionId);
+    if(itTemplate == CougarMessages::JSON_UPDATE_TEMPLATE.end())
+    {
+        std::string strJSONFileName = TEMPLATE_PATH;
+        strJSONFileName += getMessageFinder(nFunctionId)->messageName();
+        strJSONFileName += "_Update";
+        strJSONFileName += JSON_EXTENSION;
+        std::ifstream fstrmTemplate(strJSONFileName);
+        if(fstrmTemplate.is_open())
+        {
+            std::string strTemplate = std::string((std::istreambuf_iterator\<char>(fstrmTemplate)), (std::istreambuf_iterator\<char>()));
+            CougarMessages::JSON_UPDATE_TEMPLATE.insert(std::make_pair(nFunctionId, strTemplate));
+            itTemplate = CougarMessages::JSON_UPDATE_TEMPLATE.find(nFunctionId);
+        }
+    }
+    return itTemplate->second;
+#endif
+}
+
+const char* CougarMessages::getMessageName(uint32_t uMessageId)
+{
+    return getMessageFinder(uMessageId)->messageName();
+}
+
+const char* CougarMessages::getMessageId(uint32_t uMessageId)
+{
+    return getMessageFinder(uMessageId)->messageId();
+}
+
+int32_t CougarMessages::getMessageSiteId(const CPOMsgEx& msgFrom)
+{
+    return getMessageFinder(msgFrom.GetFunctionNo())->siteId(msgFrom);
+}
+
+size_t CougarMessages::getMessageHash(const CPOMsgEx& msgFrom)
+{
+    return getMessageFinder(msgFrom.GetFunctionNo())->getHash(msgFrom);
+}
+
+std::string CougarMessages::getMessageAsJSON(const CPOMsgEx& msgFrom, const std::string& strTimestamp, size_t nUID)
+{
+    std::string strJSONTemplate = getJSONTemplates(msgFrom.GetFunctionNo());
+    return getMessageFinder(msgFrom.GetFunctionNo())->getAsJSON(msgFrom, strJSONTemplate, strTimestamp, nUID);
+}
+
+bool CougarMessages::getMessageFromJSON(CPOMsgExPtr_t& msgTo, const rapidjson::Value& jsonFrom, uint32_t uMsgID)
+{
+    if(uMsgID == 0)
+    {
+        std::string strMsgType = jsonFrom["_msg_type"].GetString();
+        uMsgID = atoi(strMsgType.c_str());
+    }
+    return getMessageFinder(uMsgID)->getFromJSON(msgTo, jsonFrom);
+}
+
+std::string CougarMessages::getBase64Encoded(const CPOMsgExPtr_t& msgFrom)
+{
+    return base64_encode(reinterpret_cast\<uint8_t*>(msgFrom->GetData()), msgFrom->GetDataLength());
+}
+
+std::string CougarMessages::getBase64Encoded(const CPOMsg* pmsgFrom)
+{
+    return base64_encode(reinterpret_cast\<uint8_t*>(pmsgFrom->GetData()), pmsgFrom->GetDataLength());
+}
+
+bool CougarMessages::getFromBase64Encoded(WORD wFunctionNumber, const std::string& strEncoded, CPOMsgExPtr_t& msgTo)
+{
+    std::vector\<uint8_t> listDecoded = base64_decode(strEncoded);
+    msgTo = CPOMsgExPtr_t(new CPOMsgEx(wFunctionNumber, listDecoded.data(), (WORD) listDecoded.size(), 0), [](void* pvThis) { delete (CPOMsgEx*) pvThis; });
+    return true;
+}
+
+bool CougarMessages::updateMessageFromTemplate(const CPOMsgExPtr_t& msgFrom, CPOMsgExPtr_t& msgTo, const rapidjson::Value& jsonUpdate)
+{
+    return getMessageFinder(msgFrom->GetFunctionNo())->updateMessageFromTemplate(msgFrom, msgTo, jsonUpdate);
+}
+
+#ifdef _USING_MONGO
+bool CougarMessages::appendMessageToBSON(BsonDocumentPtr_t& bsonDoc, const CPOMsgEx& msgBase, size_t nUID)
+{
+    bsonDoc = BsonDocumentPtr_t
+    (
+        new bsoncxx::builder::basic::document,
+        [](void* pvThis)
+        {
+            bsoncxx::builder::basic::document* pDoc = (bsoncxx::builder::basic::document*)pvThis;
+            delete pDoc;
+        }
+    );
+    return getMessageFinder(msgBase.GetFunctionNo())->appendBSON(*bsonDoc.get(), msgBase, nUID);
+}
+
+bool CougarMessages::getMessageFromBSON(CPOMsgExPtr_t& msgTo, const bsoncxx::document::view& bsonView, FILETIME& ftTimestamp, int& nSiteID, int& nCSsSiteID, int& nPriority)
+{
+    return getMessageFinder(bsonView["_msgID"].get_int32())->fromBSON(bsonView, msgTo, ftTimestamp, nSiteID, nCSsSiteID, nPriority);
+}
+#endif
+
+bool CougarMessages::consumerFilter(const CPOMsgEx* pmsgFilter, ECougarComponent cougarComponent)
+{
+    switch(cougarComponent)
+    {
+        <schema.consumers:{consumer|<generateSwitchOnComponent(consumer, "component", "pmsgFilter")><\n>}>
+        default:
+            return false;
+    }
+}
+
+bool CougarMessages::generatorFilter(const CPOMsgEx* pmsgFilter, ECougarComponent cougarComponent)
+{
+    switch(cougarComponent)
+    {
+        <schema.generators:{generator|<generateSwitchOnComponent(generator, "component", "pmsgFilter")><\n>}>
+        default:
+            return false;
+    }
+}
+
+bool CougarMessages::wabFilter(const CPOMsgEx* pmsgFilter, ECougarWabFilter wabFilter)
+{
+    return CougarMessages::wabFilter((uint16_t) pmsgFilter->GetFunctionNo(), wabFilter);
+}
+
+bool CougarMessages::wabFilter(uint16_t uMsgId, ECougarWabFilter wabFilter)
+{
+    switch(wabFilter)
+    {
+        <schema.wabFilterComponents:{wabFilter|<generateSwitchOnComponentMessageID(wabFilter, "wabFilter", "uMsgId")><\n>}>
+        default:
+            return false;
+    }
+}
+
+bool CougarMessages::wabFilterAsList(ECougarWabFilter wabFilter, MessageIdListPtr_t& listMsgs)
+{
+    listMsgs = MessageIdListPtr_t
+    (
+        new MessageIdList_t,
+        [](void* pvThis)
+         {
+            delete (MessageIdList_t*) pvThis;
+        }
+    );
+    switch(wabFilter)
+    {
+        <schema.wabFilterComponents:{wabFilter|<generateComponentMessageListEx(wabFilter, "wabFilter", "listMsgs")><\n>}>
+        default:
+            return false;
+    }
+}
+
+bool CougarMessages::WabFilterAsList(ECougarWabFilter wabFilter, MessageWABFilterListPtr_t& listMsgFilters)
+{
+    listMsgFilters = MessageWABFilterListPtr_t
+        (
+            new MessageWABFilterList_t,
+            [](void* pvThis)
+            {
+                delete (MessageWABFilterList_t*) pvThis;
+            }
+        );
+    switch(wabFilter)
+    {
+        case wabFilterHOST:
+        case wabFilterGHOST:
+            <schema.orderedMessages:{message|<if(message.isHOSTFilter)>listMsgFilters->insert({ <message.define.name>, <message.hOSTMemberOffset>, <message.hOSTMemberByteSize> \});<\n><endif>}>
+            return true;
+        case wabFilterSITE:
+        case wabFilterSUBSITE:
+            <schema.orderedMessages:{message|<if(message.isSITEFilter)>listMsgFilters->insert({ <message.define.name>, <message.sITEMemberOffset>, <message.sITEMemberByteSize> \});<\n><endif>}>
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool CougarMessages::AllMessages(MessageIdListPtr_t& listMsgs)
+{
+    listMsgs = MessageIdListPtr_t
+    (
+        new MessageIdList_t,
+        [](void* pvThis)
+         {
+            delete (MessageIdList_t*) pvThis;
+        }
+    );
+    <schema.messages:{message|<if(message.hasDefine)>listMsgs->insert(<message.define.name>);<\n><endif>}>
+    return listMsgs.operator bool();
+}
+
+>>
+
+generateSwitchOnComponent(component, casePrefix, messageName) ::=
+<<
+    case <casePrefix><component.componentName>:
+        switch(<messageName>->GetFunctionNo())
+        {
+            <component.messages:{message|<if(message.hasDefine)>case <message.define.name>:<\n><endif>}>
+                return true;
+            default:
+                return false;
+        }
+>>
+
+generateSwitchOnComponentMessageID(component, casePrefix, messageID) ::=
+<<
+    case <casePrefix><component.componentName>:
+        switch(<messageID>)
+        {
+            <component.messages:{message|<if(message.hasDefine)>case <message.define.name>:<\n><endif>}>
+                return true;
+            default:
+                return false;
+        }
+>>
+
+generateComponentMessageListEx(component, casePrefix, messageList) ::=
+<<
+    case <casePrefix><component.componentName>:
+        <component.messages:{message|<if(message.hasDefine)><messageList>->insert(<message.define.name>);<\n><endif>}>
+        return true;
+>>
+
+generateHOSTComponentMessageList(component, messageList) ::=
+<<
+        <component.messages:{message|<if(message.hasDefine)><messageList><\n><endif>}>
+>>
+
+generateSITEComponentMessageList(component, messageList) ::=
+<<
+        <component.messages:{message|<if(message.hasDefine)><messageList>->insert({ <message.define.name>, <message.sITEMemberOffset>, <message.sITEMemberByteSize> \});<\n><endif>}>
+>>
+
+
+

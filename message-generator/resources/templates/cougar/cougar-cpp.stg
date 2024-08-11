@@ -1,0 +1,81 @@
+declareColumnMapMember(member) ::= <%
+JT_COLUMN_ENTRY(_T("<member.name>"), <member.sqlTypeMapping>, _<member.typescriptName>)
+%>
+
+declareColumnMapLocalMember(member) ::= <%
+<member.typeDeclareMacro>(_<member.typescriptName><if(member.hasSize)>, <member.size><endif>)
+%>
+
+
+declareCougarTable(type) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <type.generateDate>
+
+#pragma once
+
+#incldue "TableBase.h"
+#include "JTProtocoldefs.h"
+
+class <type.implementationClassName>_Table : public CTableBase
+{
+public:
+    JT_BEGIN_COLUMN_MAP(<type.implementationClassName>_Table, _T(""))
+        <type.members:{member|<declareColumnMapMember(member)>};separator="\n">
+	JT_END_COLUMN_MAP()
+
+public:
+    <type.members:{member|<declareColumnMapLocalMember(member)>};separator=";\n">
+
+private:
+
+    static const std::string SELECT_STATEMENT;
+
+protected:
+
+	virtual BOOL ComposeSQLStatement(LPTSTR szSQL, int iMaxSize);
+}
+
+>>
+
+defineCougarTable(type) ::= <<
+const std::string <type.implementationClassName>_Impl::SELECT_STATEMENT =  = "select \
+<type.tableMembers:{member|<member.name>}; separator = ", \\\n">
+from <type.name>";
+
+BOOL <type.implementationClassName>_Impl::ComposeSQLStatement(LPTSTR szSQL, int iMaxSize)
+{
+    CJTString strSQL;
+    CJTString temp;
+    strSQL.Format(<type.implementationClassName>_Impl::SELECT_STATEMENT);
+    if (*m_strFilter != 0)
+    {
+        temp.Format(_T("AND %s ") ,m_strFilter);
+        strSQL += temp;
+    }
+
+    if (*m_strOrderBy != 0)
+    {
+        temp.Format(_T("ORDER BY %s "),m_strOrderBy);
+        strSQL += temp;
+    }
+
+    DEBUG_VERBOSE_PRINT((_T("%s\n"),strSQL));
+
+    if (strSQL.GetLength() \< iMaxSize)
+    {
+        strncpy(szSQL, strSQL, iMaxSize);
+        return TRUE;
+    }
+    return FALSE;
+}
+
+>>
+
+defineCougarTableCpp(types) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <first(types).generateDate>
+
+<types:{type|#include "<type.implementationClassName>_Table.h"<\n>}>
+
+<types:{type|<defineCougarTable(type)>}>
+>>

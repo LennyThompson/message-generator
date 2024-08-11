@@ -1,0 +1,530 @@
+import "../cougarMessageHelperBSON_CPP.stg"
+import "../cougarMessageMapImplCPP.stg"
+
+generateMessageWrapper(message) ::=
+<<
+
+struct <message.plainName>_t : public <message.name>
+{
+    <if(message.hasDefine)>
+    enum { FUNCTION_ID = <message.define.name> };
+    operator uint16_t() { return FUNCTION_ID; }
+    operator const char*() { return "<message.define.name>"; }
+
+    std::shared_ptr\<void> operator ()(const MsgBuffer_t& msgBuffer, size_t sizeOffset)
+    {
+        return std::reinterpret_pointer_cast\<void, <message.plainName>_t>(GetDeserialised(msgBuffer, sizeOffset));
+    }
+    <endif>
+
+    size_t GetVariableArrayMemberCount() const
+    {
+        <if(message.hasVariableLengthArrayMember)>
+        <if(message.hasVariableLengthArraySizeMember)>
+        return (size_t) <message.VariableLengthArraySizeMemberPath:{member|<member.name>};separator=".">;
+        <else>
+        return (size_t) -1;
+        <endif>
+        <else>
+        return 0;
+        <endif>
+    }
+
+    static bool HasVariableArray()
+    {
+        return <if(message.hasVariableLengthArrayMember)>true<else>false<endif>;
+    }
+
+    static std::shared_ptr\<<message.plainName>_t> GetDeserialised(const MsgBuffer_t& msgBuffer, size_t sizeOffset = 0)
+    <if(message.hasVariableLengthArrayMember)>
+    {
+        size_t nMessageSize = GetAllocSize(GetVariableArrayLength(msgBuffer, sizeOffset));
+        std::shared_ptr\<<message.plainName>_t> pmsgReturn = std::shared_ptr\<<message.plainName>_t>((<message.plainName>_t*) new uint8_t[nMessageSize], VariableMessageDeleter\<<message.plainName>_t>());
+        std::memcpy(pmsgReturn.get(), msgBuffer.data() + sizeOffset, nMessageSize);
+        return pmsgReturn;
+    }
+    <else>
+    {
+        std::shared_ptr\<<message.plainName>_t> pmsgReturn(new <message.plainName>_t);
+        std::memcpy(pmsgReturn.get(), msgBuffer.data() + sizeOffset, sizeof(<message.name>));
+        return pmsgReturn;
+    }
+    <endif>
+
+    <if(message.hasVariableLengthArrayMember)>
+    <if(message.hasVariableLengthArraySizeMember)>
+    void Serialise(MsgBuffer_t& msgBuffer, size_t)
+    {
+        size_t sizeBuffer(GetAllocSize(GetVariableArrayMemberCount()));
+        msgBuffer.resize(sizeBuffer, 0);
+        std::memcpy(msgBuffer.data(), this, sizeBuffer);
+    }
+    <else>
+    void Serialise(MsgBuffer_t& msgBuffer, size_t sizeBuffer)
+    {
+        msgBuffer.resize(GetAllocSize(GetVariableArrayLength(this, sizeBuffer)), 0);
+        std::memcpy(msgBuffer.data(), this, sizeBuffer);
+    }
+    <endif>
+    <else>
+    void Serialise(MsgBuffer_t& msgBuffer, size_t)
+    {
+        msgBuffer.resize(GetAllocSize(0), 0);
+        std::memcpy(msgBuffer.data(), this, sizeof(<message.name>));
+    }
+    <endif>
+
+    <if(message.hasSiteIdMember)>
+    int32_t SiteId() const
+    {
+        return <buildSiteIdPath(message)>;
+    }
+    <else>
+    int32_t SiteId() const
+    {
+        return -1;
+    }
+    <endif>
+    <if(message.hasCssSiteIdMember)>
+    int32_t CssSiteId() const
+    {
+        return <buildCssSiteIdPath(message)>;
+    }
+    <else>
+    int32_t CssSiteId() const
+    {
+        return -1;
+    }
+    <endif>
+
+
+    <if(message.hasVariableLengthArrayMember)>
+    static size_t GetVariableArrayLength(const MsgBuffer_t& msgBuffer, size_t sizeOffset = 0)
+    {
+        return GetVariableArrayLength(reinterpret_cast\<const <message.plainName>_t*>(msgBuffer.data() + sizeOffset)<if(!message.hasVariableLengthArraySizeMember)>, msgBuffer.size() - sizeOffset<endif>);
+    }
+    <else>
+    static size_t GetVariableArrayLength(const MsgBuffer_t&, size_t)
+    {
+        return 0;
+    }
+    <endif>
+    <if(message.hasVariableLengthArrayMember)>
+    static size_t GetVariableArrayLength(const <message.plainName>_t* pmsg<if(!message.hasVariableLengthArraySizeMember)>, size_t sizeMsg<endif>)
+    {
+        <if(message.hasVariableLengthArraySizeMember)>
+        return pmsg->GetVariableArrayMemberCount();
+        <else>
+        return ((sizeMsg - sizeof(<message.name>)) / sizeof(<message.AnyVariableLengthArrayMember.singleValueCppType>)) + 1;
+        <endif>
+    }
+    <else>
+    static size_t GetVariableArrayLength(const <message.plainName>_t* , size_t )
+    {
+        return 0;
+    }
+    <endif>
+    <if(message.hasVariableLengthArrayMember)>
+    static size_t GetAllocSize(size_t uVariableArrayLength)
+    {
+        if(uVariableArrayLength == 0)
+        {
+            return sizeof(<message.name>);
+        }
+        else
+        {
+            return sizeof(<message.name>) + ((uVariableArrayLength - 1) * sizeof(<message.anyVariableLengthArrayMember.singleValueCppType>));
+        }
+    }
+    <else>
+    static size_t GetAllocSize(size_t )
+    {
+        return sizeof(<message.name>);
+    }
+    <endif>
+
+#if defined _USING_MONGO
+    <if(message.hasVariableLengthArrayMember)>
+    bool AppendBSONToDocument(builder::basic::sub_document& bsonDoc, size_t nVariableArraySize) const;
+    <else>
+    bool AppendBSONToDocument(builder::basic::sub_document& bsonDoc, size_t) const;
+    <endif>
+    static bool FromBSON(const document::view& bsonView, <message.plainName>_t* pmsgResult)
+    {
+        return pmsgResult->FromBSONDocument(bsonView);
+    }
+
+    static std::shared_ptr\<<message.plainName>_t> FromBSON(const document::view& bsonView)
+    {
+        <if(message.hasVariableLengthArrayMember)>
+        types::b_array barr<message.anyVariableLengthArrayMember.strippedName> = bsonView<message.variableLengthArrayMemberPath:{member|["<member.strippedName>"]}>.get_array();
+        std::shared_ptr\<<message.plainName>_t> pmsgResult = CreateVariableSizeMessageType\<<message.plainName>_t\>(GetAllocSize(std::distance(barr<message.anyVariableLengthArrayMember.strippedName>.operator array::view().begin(), barr<message.anyVariableLengthArrayMember.strippedName>.operator array::view().end())));
+        <else>
+        std::shared_ptr\<<message.plainName>_t> pmsgResult(new <message.plainName>_t());
+        <endif>
+        pmsgResult->FromBSONDocument(bsonView);
+        return pmsgResult;
+    }
+
+private:
+
+    bool FromBSONDocument(const document::view& bsonView);
+
+#endif
+};
+
+>>
+
+generateMessageWrapperDefinition(message) ::=
+<<
+
+#if defined _USING_MONGO
+
+// <message.plainName>_t mmethods.
+
+<if(message.hasVariableLengthArrayMember)>
+bool <message.plainName>_t::AppendBSONToDocument(builder::basic::sub_document& bsonDoc, size_t nVariableArraySize) const
+{
+    <message.members:{member|<localMemberAsBSON(message, member, true, "", "bsonDoc", "nVariableArraySize")>}>
+    return true;
+}
+<else>
+bool <message.plainName>_t::AppendBSONToDocument(builder::basic::sub_document& bsonDoc, size_t) const
+{
+    <message.members:{member|<localMemberAsBSON(message, member, true, "", "bsonDoc", "nVariableArraySize")>}>
+    return true;
+}
+<endif>
+
+bool <message.plainName>_t::FromBSONDocument(const document::view& bsonView)
+{
+    <message.members:{member|<localMemberFromBSON(message, member, "", "bsonView")>}>
+    return true;
+}
+
+#endif
+
+>>
+
+generateMessageAndDependents(message) ::=
+<<
+<message.name> <message.defineId>
+    <if(message.hasDependentMessages)>
+    <message.dependentMessages:{dependent|<generateMessageAndDependents(dependent)>};separator="\n">
+    <endif>
+>>
+
+generateAllMessageWrappers(schema) ::=
+<<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+#pragma once
+
+#include \<all-protocol.h>
+
+<schema.allProtocolFiles:{file|//#include "<file>"};separator="\n">
+
+#include "enum-message-helper.h"
+#include "deserialiser-common.h"
+
+#pragma pack(push)
+#pragma pack(1)
+
+// Message Category 1: All non-message (no JTP_ define associated)
+
+<schema.nonMessages:{message|<generateMessageWrapper(message)>}>
+
+// Message Category 2: All messages that are not dependent on another message or non-messsage type
+
+<schema.nonDependentMessages:{message|<generateMessageWrapper(message)>}>
+
+// Message Category 3: All messages that are not in the above but are dependencies of other messages
+
+<schema.messagesDependencies:{message|<generateMessageWrapper(message)>}>
+
+// Message Category 4: All messages that have dependencies on other messages
+
+<schema.dependentMessages:{message|<generateMessageWrapper(message)>}>
+
+#pragma pack(pop)
+
+>>
+
+generateAllMessageWrapperDefinitions(schema) ::=
+<<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+#pragma once
+
+#include "Common.h"
+#include "MessagePackaging.h"
+#include "MessagePackagingSpecialisation.h"
+
+#include "cougar-messages-wrapper.h"
+
+// Message Category 1: All non-message (no JTP_ define associated)
+
+<schema.nonMessages:{message|<generateMessageWrapperDefinition(message)>}>
+
+// Message Category 2: All messages that are not dependent on another message or non-messsage type
+
+<schema.nonDependentMessages:{message|<generateMessageWrapperDefinition(message)>}>
+
+// Message Category 3: All messages that are not in the above but are dependencies of other messages
+
+<schema.messagesDependencies:{message|<generateMessageWrapperDefinition(message)>}>
+
+// Message Category 4: All messages that have dependencies on other messages
+
+<schema.dependentMessages:{message|<generateMessageWrapperDefinition(message)>}>
+
+>>
+
+generateFromBSONCase(message) ::=
+<<
+case <message.plainName>_t::FUNCTION_ID:
+    {
+        mongoHeader.FromBSON(view);
+        return reinterpret_pointer_cast\<void>(<message.plainName>_t::FromBSON(view));
+    }
+>>
+
+generateFromBSONToMessageBufferCase(message) ::=
+<<
+case <message.plainName>_t::FUNCTION_ID:
+    {
+        mongoHeader.FromBSON(bsonView);
+        <if(message.hasVariableLengthArrayMember && !message.hasVariableLengthArraySizeMember)>
+        std::shared_ptr\<<message.plainName>_t> pmsg<message.plainName> = <message.plainName>_t::FromBSON(bsonView);
+        types::b_array barr<message.anyVariableLengthArrayMember.strippedName> = bsonView<message.variableLengthArrayMemberPath:{member|["<member.strippedName>"]}>.get_array();
+        size_t nAllocSize = pmsg<message.plainName>->GetAllocSize(std::distance(barr<message.anyVariableLengthArrayMember.strippedName>.operator array::view().begin(), barr<message.anyVariableLengthArrayMember.strippedName>.operator array::view().end()));
+        pmsg<message.plainName>->Serialise(msgBuffer, nAllocSize);
+        <else>
+        <message.plainName>_t::FromBSON(bsonView)->Serialise(msgBuffer, 0);
+        <endif>
+        return true;
+    }
+>>
+
+generateToBSONFunction(message) ::=
+<<
+bool SerialiseToBson<message.plainName>(builder::basic::sub_document& bsonDoc, int nFunctionID, const MsgBuffer_t& transportBuffer, MongoHeader& mongoHeader, PredFn_t pred)
+{
+    PO_MSGX_HEADER msgHeader{};
+    std::shared_ptr\<<message.plainName>_t> pmsg<message.plainName> = reinterpret_pointer_cast\<<message.plainName>_t>(UnpackMessage\<<message.plainName>_t>()(transportBuffer, msgHeader, pred));
+    if(pmsg<message.plainName> != nullptr)
+    {
+        mongoHeader._nSiteID = pmsg<message.plainName>->SiteId();
+        mongoHeader._nCssSiteID = pmsg<message.plainName>->CssSiteId();
+        mongoHeader._timeTimeStamp = convertFiletimeToTimePoint(msgHeader.timeStamp);
+        mongoHeader._timeRecordedTimeStamp = std::chrono::system_clock::now();
+        mongoHeader._nPriority = msgHeader.flags & 0x0F;
+        mongoHeader._nMsgID = <message.plainName>_t::FUNCTION_ID;
+        <if(message.hasDefine)>
+        mongoHeader._strMsgName = pmsg<message.plainName>->operator const char*();
+        <else>
+        mongoHeader._strMsgName = "";
+        <endif>
+        return mongoHeader.AppendBSONToDocument(bsonDoc)
+            &&
+            <if(message.hasVariableLengthArrayMember)>
+            <if(message.hasVariableLengthArraySizeMember)>
+            pmsg<message.plainName>->AppendBSONToDocument(bsonDoc, pmsg<message.plainName>->GetVariableArrayMemberCount());
+            <else>
+            pmsg<message.plainName>->AppendBSONToDocument(bsonDoc, <message.plainName>_t::GetVariableArrayLength(transportBuffer, sizeof(PO_COMMS_HEADER) + sizeof(PO_MSGX_HEADER)));
+            <endif>
+            <else>
+            pmsg<message.plainName>->AppendBSONToDocument(bsonDoc, 0);
+            <endif>
+    }
+    return false;
+}
+>>
+
+generateToBSONCase(message) ::=
+<<
+case <message.plainName>_t::FUNCTION_ID:
+    {
+        return SerialiseToBson<message.plainName>(bsonDoc, nFunctionID, transportBuffer, mongoHeader, pred);
+    }
+>>
+
+generateToPOMsg(message) ::=
+<<
+case <message.plainName>_t::FUNCTION_ID:
+    {
+        mongoHeader.FromBSON(view);
+        return reinterpret_pointer_cast\<void>(<message.plainName>_t::FromBSON(view));
+    }
+>>
+
+generateAllDeserialisers(schema) ::=
+<<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+#include "MessagePackaging.h"
+#include "cougar-messages-wrapper.h"
+#include "mongo-message.h"
+
+std::shared_ptr\<void> DeserialiseMessageFromBuffer(const MsgBuffer_t& msgBuffer, size_t sizeOffset, int nFunctionID)
+{
+    switch(nFunctionID)
+    {
+        <schema.orderedMessages:{message|case <message.plainName>_t::FUNCTION_ID: return <message.plainName>_t()(msgBuffer, sizeOffset); };separator="\n">
+
+        default:
+            break;
+    }
+    return std::shared_ptr\<void>();
+}
+
+bool SerialiseMessageToBuffer(const std::shared_ptr\<void>& pmsgFrom, MsgBuffer_t& msgBuffer, int nFunctionID, size_t sizeMsg)
+{
+    switch(nFunctionID)
+    {
+        <schema.orderedMessages:{message|case <message.plainName>_t::FUNCTION_ID: reinterpret_pointer_cast\<<message.plainName>_t>(pmsgFrom)->Serialise(msgBuffer, sizeMsg); return true; };separator="\n">
+
+        default:
+            break;
+    }
+    return false;
+}
+
+#if defined _USING_MONGO
+
+std::shared_ptr\<void> DeserialiseBson(const document::view& view, int nFunctionID, MongoHeader& mongoHeader)
+{
+    switch(nFunctionID)
+    {
+        <schema.orderedMessages:{message|<generateFromBSONCase(message)>};separator="\n">
+
+        default:
+            break;
+    }
+    return std::shared_ptr\<void>();
+}
+
+bool DeserialiseBsonToMessageBuffer(const document::view& bsonView, MsgBuffer_t& msgBuffer, int nFunctionID, MongoHeader& mongoHeader)
+{
+    switch(nFunctionID)
+    {
+        <schema.orderedMessages:{message|<generateFromBSONToMessageBufferCase(message)>};separator="\n">
+
+        default:
+            break;
+    }
+    return false;
+}
+
+<schema.orderedMessages:{message|<generateToBSONFunction(message)>};separator="\n">
+
+bool SerialiseToBson(builder::basic::sub_document& bsonDoc, int nFunctionID, const MsgBuffer_t& transportBuffer, MongoHeader& mongoHeader, PredFn_t pred)
+{
+    switch(nFunctionID)
+    {
+        <schema.orderedMessages:{message|<generateToBSONCase(message)>};separator="\n">
+
+        default:
+            break;
+    }
+    return false;
+}
+
+#endif  // _USING_MONGO
+
+bool WabFilterAsList(ECougarWabFilter wabFilter, MessageIdListPtr_t& listMsgs)
+{
+    listMsgs = MessageIdListPtr_t
+    (
+        new MessageIdList_t,
+        [](void* pvThis)
+         {
+            delete (MessageIdList_t*) pvThis;
+        }
+    );
+    switch(wabFilter)
+    {
+        <schema.wabFilterComponents:{wabFilter|<generateComponentMessageListEx(wabFilter, "wabFilter", "listMsgs")><\n>}>
+        default:
+            return false;
+    }
+}
+
+bool GetWabFilterAsList(ECougarWabFilter wabFilter, MessageWABFilterListPtr_t& listMsgFilters)
+{
+    listMsgFilters = MessageWABFilterListPtr_t
+        (
+            new MessageWABFilterList_t,
+            [](void* pvThis)
+            {
+                delete (MessageWABFilterList_t*) pvThis;
+            }
+        );
+    switch(wabFilter)
+    {
+        case wabFilterHOST:
+        case wabFilterGHOST:
+            <schema.orderedMessages:{message|<if(message.isHOSTFilter)>listMsgFilters->insert({ <message.define.name>, <message.hOSTMemberOffset>, <message.hOSTMemberByteSize> \});<\n><endif>}>
+            return true;
+        case wabFilterSITE:
+        case wabFilterSUBSITE:
+            <schema.orderedMessages:{message|<if(message.isSITEFilter)>listMsgFilters->insert({ <message.define.name>, <message.sITEMemberOffset>, <message.sITEMemberByteSize> \});<\n><endif>}>
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool WabFilter(uint16_t uMsgId, ECougarWabFilter wabFilter)
+{
+    switch(wabFilter)
+    {
+        <schema.wabFilterComponents:{wabFilter|<generateSwitchOnComponentMessageID(wabFilter, "wabFilter", "uMsgId")><\n>}>
+        default:
+            return false;
+    }
+}
+
+const char* GetMessageName(int nFunctionID)
+{
+    switch(nFunctionID)
+    {
+        <schema.orderedMessages:{message|<if(message.hasDefine)>case <message.plainName>_t::FUNCTION_ID: return (const char*) <message.plainName>_t();<endif>};separator="\n">
+        default:
+            return "Unknown-message";
+    }
+}
+
+int GetMessageSiteId(int nFunctionID, const MsgBuffer_t& msgBuffer)
+{
+    switch(nFunctionID)
+    {
+        <schema.orderedMessages:{message|<if(message.hasDefine)>case <message.plainName>_t::FUNCTION_ID: return <message.plainName>_t::GetDeserialised(msgBuffer)->SiteId();<endif>};separator="\n">
+        default:
+            return -1;
+    }
+}
+
+>>
+
+messageTypeSummary(message) ::=
+<%
+<message.name>, variable array = <if(message.hasVariableLengthArrayMember)>true, <message.variableLengthArrayMemberPath:{member|<member.name>};separator=".">, size member = <if(message.hasVariableLengthArraySizeMember)>true, <message.variableLengthArraySizeMemberPath:{member|<member.name>};separator="."><else>false<endif><else>false<endif>
+%>
+
+temp(schema) ::=
+<<
+<schema.nonMessages:{message|<messageTypeSummary(message)>};separator="\n">
+
+// Message Category 2: All messages that are not dependent on another message or non-messsage type
+
+<schema.nonDependentMessages:{message|<messageTypeSummary(message)>};separator="\n">
+
+// Message Category 3: All messages that are not in the above but are dependencies of other messages
+
+<schema.messagesDependencies:{message|<messageTypeSummary(message)>};separator="\n">
+
+// Message Category 4: All messages that have dependencies on other messages
+
+<schema.dependentMessages:{message|<messageTypeSummary(message)>};separator="\n">
+>>

@@ -1,0 +1,147 @@
+import "common.stg"
+
+addAssignMember(member, messageName, memberSize) ::= <%
+<if(member.hasMessageType)>
+<if(member.messageType.hasVariableLengthArrayMember)>
+std::memcpy(&(<messageName>-><member.name>), <member.shortName>.get(), <memberSize>);
+<else>
+<if(member.isArray)>
+nIndex = 0;<\n>
+std::for_each(<member.shortName>.begin(), <member.shortName>.end(), [&<messageName>, &nIndex](const <getMessagePointerTypedef(member.messageType)>& value) { <messageName>-><member.name>[nIndex++] = *(value.get()); });
+<else>
+<messageName>-><member.name> = *(<member.shortName>.get());
+<endif>
+<endif>
+<else>
+<if(member.isParameterString)>
+    <if(member.isArrayPointer)>
+std::memcpy(<messageName>-><member.name>, <member.shortName>.c_str(), <member.shortName>.size());
+    <else>
+std::memcpy(&<messageName>-><member.name>, <member.shortName>.c_str(), <member.shortName>.size());
+    <endif>
+<elseif(member.isArray || member.isVariableLengthArray)>
+nIndex = 0;<\n>
+std::for_each(<member.shortName>.begin(), <member.shortName>.end(), [&<messageName>, &nIndex](const <member.cppType>& value){ <messageName>-><member.name>[nIndex++] = value; });
+<else>
+<messageName>-><member.name> = <member.shortName>;
+<endif>
+<endif>
+%>
+
+addAssignMemberForCopy(member, message, messageName, messageCopy, messageSize, memberSize) ::= <%
+<if(member.hasMessageType)>
+    <if(member.messageType.hasVariableLengthArrayMember)>
+std::memcpy(&(<messageName>-><member.name>), <if(messageCopy)>&(<messageCopy>-><member.name>)<else><member.shortName>.get()<endif>, <memberSize>);
+    <else>
+        <if(member.isArray)>
+            <if(member.isVariableLengthArray)>
+for(size_t nIndex(0); nIndex \< <messageName>-><member.sizeMember.name>; ++nIndex)<\n>
+            <else>
+for(size_t nIndex(0); nIndex \< <member.arraySize>; ++nIndex)<\n>
+            <endif>
+{<\n>
+    std::memcpy(&(<messageName>-><member.name>[nIndex]), &(<messageCopy>-><member.name>[nIndex]), sizeof(<member.messageType.name>));<\n>
+}<\n>
+        <else>
+std::memcpy(&(<messageName>-><member.name>), &(<messageCopy>-><member.name>), sizeof(<member.messageType.name>));
+        <endif>
+    <endif>
+<else>
+    <if(member.isFiletime)>
+<messageName>-><member.name> = <messageCopy>-><member.name>;
+    <elseif(member.hasEnumType)>
+<messageName>-><member.name> = <messageCopy>-><member.name>;
+    <elseif(member.isString)>
+        <if(member.isArrayPointer)>
+            <if(member.isVariableLengthArray)>
+std::memcpy(<messageName>-><member.name>, <messageCopy>-><member.name>, <messageCopy>-><member.arraySize>);
+            <else>
+std::memcpy(<messageName>-><member.name>, <messageCopy>-><member.name>, <member.arraySize>);
+            <endif>
+        <else>
+std::memcpy(&<messageName>-><member.name>, &<messageCopy>-><member.name>, <messageName>-><member.sizeMember.name>);
+        <endif>
+    <elseif(member.isArray)>
+        <if(member.isVariableLengthArray)>
+            <if(member.isUnknownArraySize)>
+for(size_t nIndex(0); nIndex \< (<messageSize> - sizeof(<message.name>) + 1); ++nIndex)
+            <else>
+for(size_t nIndex(0); nIndex \< <messageName>-><member.sizeMember.name>; ++nIndex)
+            <endif>
+        <else>
+for(size_t nIndex(0); nIndex \< <member.arraySize>; ++nIndex)
+        <endif>
+{    <messageName>-><member.name>[nIndex] = <messageCopy>-><member.name>[nIndex];    }
+    <else>
+<messageName>-><member.name> = <messageCopy>-><member.name>;
+    <endif>
+<endif>
+%>
+
+buildSizeForMessageWithVariableSizeMember(message, member, appendMemberPath, useAppendMemberPath, sizeVar, sizeMemberVar) ::= <%
+size_t <sizeVar>(sizeof(<message.name>) - sizeof(<member.singleValueCppType>));<\n>
+size_t <sizeMemberVar>(sizeof(<member.messageType.name>) + (<if(useAppendMemberPath)><appendMemberPath><member.name>.<else><member.shortName>-><endif><member.messageType.variableLengthArrayMember.sizeMember.name> - 1) * sizeof(<member.messageType.variableLengthArrayMember.singleValueCppType>));<\n>
+<sizeVar> += <sizeMemberVar>;<\n>
+%>
+
+addDefineMessageBuilder(message) ::= <<
+<addDeclareMessageBuilder(message, false)>
+{
+<if(message.hasVariableLengthArrayMember)>
+    <getMessagePointerTypedef(message)> pmsgBuilt((<message.name>*) new uint8_t[<messageSize(message, message.variableLengthArrayMember, "")>], [](void* ptrDelete){ delete [] reinterpret_cast\<<message.name>*>(ptrDelete); });
+<elseif(message.hasMemberWithVariableLengthArrayMember)>
+    <buildSizeForMessageWithVariableSizeMember(message, message.memberWithVariableLengthArrayMember, "", false, "nAllocSize", "nAllocMemberSize")>
+    <getMessagePointerTypedef(message)> pmsgBuilt((<message.name>*) new uint8_t[nAllocSize], [](void* ptrDelete){ delete [] reinterpret_cast\<<message.name>*>(ptrDelete); });
+<else>
+    <getMessagePointerTypedef(message)> pmsgBuilt(new <message.name>);
+<endif>
+    std::memset(pmsgBuilt.get(), 0, <messageSize(message, message.variableLengthArrayMember, "")>);
+<if(message.hasArrayMember || message.hasVariableLengthArrayMember)>
+    size_t nIndex(0);
+<endif>
+    <message.members:{member|<addAssignMember(member, "pmsgBuilt", "nAllocMemberSize")>};separator="\n">
+
+    return pmsgBuilt;
+}
+
+>>
+
+addDefineMessageCopy(message) ::= <<
+<addDeclareMessageCopy(message, false)>
+{
+<if(message.hasVariableLengthArrayMember)>
+    <getMessagePointerTypedef(message)> pmsgBuilt((<message.name>*) new uint8_t[nMsgSize], [](void* ptrDelete){ delete [] reinterpret_cast\<<message.name>*>(ptrDelete); });
+<elseif(message.hasMemberWithVariableLengthArrayMember)>
+    <buildSizeForMessageWithVariableSizeMember(message, message.memberWithVariableLengthArrayMember, "pmsgCopy->", true, "nAllocSize", "nAllocMemberSize")>
+    <getMessagePointerTypedef(message)> pmsgBuilt((<message.name>*) new uint8_t[nAllocSize], [](void* ptrDelete){ delete [] reinterpret_cast\<<message.name>*>(ptrDelete); });
+<else>
+    <getMessagePointerTypedef(message)> pmsgBuilt(new <message.name>);
+<endif>
+    std::memset(pmsgBuilt.get(), 0, nMsgSize);
+<if(message.hasArrayMember || message.hasVariableLengthArrayMember)>
+    size_t nIndex(0);
+<endif>
+    <message.members:{member|<addAssignMemberForCopy(member, message, "pmsgBuilt", "pmsgCopy", "nMsgSize", "nAllocMemberSize")>};separator="\n">
+
+    return pmsgBuilt;
+}
+
+>>
+
+defineMessageBuilders(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#include "<schema.builderHeaderName>"
+#include \<cstring>
+#include \<algorithm>
+#include \<memory>
+
+namespace <schema.schemaNamespace>
+{
+
+    <schema.messages:{message|<addDefineMessageBuilder(message)>};separator="\n">
+    <schema.messages:{message|<addDefineMessageCopy(message)>};separator="\n">
+
+}
+>>

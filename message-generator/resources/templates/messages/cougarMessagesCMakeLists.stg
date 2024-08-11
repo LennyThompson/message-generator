@@ -1,0 +1,21 @@
+
+declareCougarMakeFileLists(schema, finderList, helperList) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+set(COUGAR_MESSAGES_FILES
+    <schema.enumHelperHeaderName>
+    <schema.nonmessageHeaderName>
+    <schema.headerName>
+    <schema.builderHeaderName>
+    <schema.builderCppName>
+    <schema.enumHelperCppName>
+    <schema.messageMapCppName>
+    <finderList:{fileName|<fileName><\n>}>
+)
+
+set(COUGAR_MESSAGE_HELPER_FILES
+    <helperList:{messageFile|<messageFile><\n>}>
+)
+
+>>

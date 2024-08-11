@@ -1,0 +1,719 @@
+import "common.stg"
+
+defineCougarMessageUtils(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#include "cougar-utils.h"
+#include \<message-helper.h>
+#ifdef _TEST_BED_
+#include \<ctime>
+#endif
+
+#ifdef _USING_MONGO
+#include \<bsoncxx/builder/basic/kvp.hpp>
+#include \<bsoncxx/types.hpp>
+#include \<chrono>
+#endif
+
+#ifdef _USING_MONGO
+using bsoncxx::builder::basic::kvp;
+#endif
+
+const int64_t TICKS_PER_SECOND = 10000000ULL;
+const int64_t EPOCH_DIFFERENCE = 11644473600ULL;
+
+#include \<rapidjson/document.h>
+#include \<iostream>
+
+#ifdef _WIN64
+const char* JSON_WRAPPER = "{ \\"hash\\": \\"%llu\\", \\"content\\": %s, \\"timestamp\\": \\"%s\\", \\"data\\": \\"%s\\" }";
+#else
+const char* JSON_WRAPPER = "{ \\"hash\\": \\"%u\\", \\"content\\": %s, \\"timestamp\\": \\"%s\\", \\"data\\": \\"%s\\" }";
+#endif
+
+const char* UnknownCougar_Msg::UNKNOWN_MESSAGE_NAME = "Unknown Message";
+
+const char* SYSTEMTIME_FORMAT = "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ";
+
+time_t convertFileTimeToTime_t(const FILETIME& fileTime)
+{
+    int64_t llTime = static_cast\<int64_t>(fileTime.dwLowDateTime) + (static_cast\<int64_t>(fileTime.dwHighDateTime) \<\< 32);
+    int64_t llTimeSecs = llTime / TICKS_PER_SECOND;
+    llTimeSecs -= EPOCH_DIFFERENCE;
+    return (time_t) llTimeSecs;
+}
+
+bool convertFileTimeToSystemTime(const FILETIME& fileTime, SYSTEMTIME& sysTime)
+{
+#ifdef _TEST_BED_
+    time_t timeConvert = convertFileTimeToTime_t(fileTime);
+    int64_t llTime = static_cast\<int64_t>(fileTime.dwLowDateTime) + (static_cast\<int64_t>(fileTime.dwHighDateTime) \<\< 32);
+    int64_t llTimeSecs = llTime / TICKS_PER_SECOND;
+    int64_t llMillSecs = (llTime - (llTimeSecs * TICKS_PER_SECOND));
+    sysTime.wMilliseconds = static_cast\<int16_t>(llMillSecs / (TICKS_PER_SECOND / 1000));
+    llTimeSecs -= EPOCH_DIFFERENCE;
+    tm* ptmTemp = localtime(reinterpret_cast\<time_t*>(&llTimeSecs));
+    sysTime.wYear = ptmTemp->tm_year + 1900;
+    sysTime.wMonth = ptmTemp->tm_mon + 1;
+    sysTime.wDay = ptmTemp->tm_mday;
+    sysTime.wHour = ptmTemp->tm_hour;
+    sysTime.wMinute = ptmTemp->tm_min;
+    sysTime.wSecond = ptmTemp->tm_sec;
+#else
+    ::FileTimeToSystemTime(&fileTime, &sysTime);
+#endif
+    return true;
+}
+
+const char* SYSTEM_TIME_FORMAT = "%04hu-%02hu-%02huT%02hu:%02hu:%02hu.%03huZ";
+
+SYSTEMTIME sytemtimeFromSystemTimeString(const std::string& strSysTime)
+{
+    SYSTEMTIME sysTime;
+    std::memset(&sysTime, 0, sizeof(sysTime));
+    sscanf
+    (
+        strSysTime.c_str(),
+        SYSTEM_TIME_FORMAT,
+        &sysTime.wYear,
+        &sysTime.wMonth,
+        &sysTime.wDay,
+        &sysTime.wHour,
+        &sysTime.wMinute,
+        &sysTime.wSecond,
+        &sysTime.wMilliseconds
+    );
+    return sysTime;
+}
+
+FILETIME fileTimeFromSystemTimeString(const std::string& strSysTime)
+{
+    SYSTEMTIME sysTime = sytemtimeFromSystemTimeString(strSysTime);
+    FILETIME fileTime = { 0, 0 };
+    SystemTimeToFileTime(&sysTime, &fileTime);
+    return fileTime;
+}
+
+void fileTimeToSystemTimeString(const FILETIME& ftFrom, std::string& strTime)
+{
+    SYSTEMTIME sysTime = {};
+    convertFileTimeToSystemTime(ftFrom, sysTime);
+    char szTime[32];
+    std::memset(szTime, 0, 32);
+    std::sprintf(szTime, SYSTEM_TIME_FORMAT, sysTime.wYear, sysTime.wMonth, sysTime.wDay, sysTime.wHour, sysTime.wMinute, sysTime.wSecond, sysTime.wMilliseconds);
+    strTime = szTime;
+}
+
+#ifdef _TEST_BED_
+void SystemTimeToFileTime(const SYSTEMTIME *pSYSTEMTIME, FILETIME *pFILETIME)
+{
+    tm tmTemp = { pSYSTEMTIME->wSecond, pSYSTEMTIME->wMinute, pSYSTEMTIME->wHour, pSYSTEMTIME->wDay, pSYSTEMTIME->wMonth - 1, pSYSTEMTIME->wYear - 1900, 0, 0, 0 };
+    time_t tmTime = mktime(&tmTemp);
+    int64_t llTime = static_cast\<int64_t>(tmTime) + EPOCH_DIFFERENCE;
+    llTime *= TICKS_PER_SECOND;
+    llTime += (pSYSTEMTIME->wMilliseconds * (TICKS_PER_SECOND / 1000));
+    pFILETIME->dwLowDateTime = static_cast\<uint32_t>((llTime & 0xFFFFFFFF));
+    pFILETIME->dwHighDateTime = static_cast\<uint32_t>(llTime >\> 32);
+}
+#endif
+
+#ifdef _USING_MONGO
+bsoncxx::types::b_date convertFileTimeToBsonDate(const FILETIME& fileTime)
+{
+    int64_t llTime = static_cast\<int64_t>(fileTime.dwLowDateTime) + (static_cast\<int64_t>(fileTime.dwHighDateTime) \<\< 32);
+    time_t timeSecs = llTime / TICKS_PER_SECOND - EPOCH_DIFFERENCE;
+    std::chrono::milliseconds milliSecs((llTime / 10000ULL) % 1000);
+
+    auto timePoint = std::chrono::system_clock::from_time_t(timeSecs);
+    timePoint += milliSecs;
+    return bsoncxx::types::b_date{timePoint};
+}
+
+FILETIME convertBsonDateToFileTime(const bsoncxx::types::b_date& bsonDate)
+{
+    std::chrono::system_clock::time_point timePt(bsonDate.value);
+    FILETIME fileTime = { 0 };
+    // Convert the time_point to TICKS_PER_SECOND
+    int64_t timePointTmp = std::chrono::duration_cast\<std::chrono::microseconds>(timePt.time_since_epoch()).count() * 10LL;
+    // Add the epoch difference
+    timePointTmp += EPOCH_DIFFERENCE * TICKS_PER_SECOND;
+    // Turn it into  a filetime...
+    fileTime.dwLowDateTime = (unsigned long)timePointTmp;
+    fileTime.dwHighDateTime = timePointTmp \>> 32;
+
+    return fileTime;
+}
+
+namespace <schema.schemaNamespace>
+{
+    bool appendBSONToDocument(bsoncxx::builder::basic::sub_document& bsonDoc, const FILETIME& ftTimeStamp, int nPriority, int nSiteID, int nCssSiteID, int nMsgID, const std::string& strMsgName)
+    {
+        bsonDoc.append(kvp("_timestamp", convertFileTimeToBsonDate(ftTimeStamp)));
+        bsonDoc.append(kvp("_priority", nPriority));
+        bsonDoc.append(kvp("_siteID", nSiteID));
+        bsonDoc.append(kvp("_cssSiteID", nCssSiteID));
+        bsonDoc.append(kvp("_msgID", nMsgID));
+        bsonDoc.append(kvp("_msgName", strMsgName));
+
+        return true;
+    }
+
+    bool readFromBSONDocument(const bsoncxx::document::view& bsonView, FILETIME& ftTimeStamp, int& nSiteID, int& nCssSiteID, int& nPriority, int& nMsgID, std::string& strMsgName)
+    {
+        if(bsonView["_timestamp"])
+        {
+            ftTimeStamp = convertBsonDateToFileTime(bsonView["_timestamp"].get_date());
+        }
+        if(bsonView["_priority"])
+        {
+            nPriority = bsonView["_priority"].get_int32();
+        }
+        if(bsonView["_siteID"])
+        {
+            nSiteID = bsonView["_siteID"].get_int32();
+        }
+        if(bsonView["_cssSiteID"])
+        {
+            nCssSiteID = bsonView["_cssSiteID"].get_int32();
+        }
+        if(bsonView["_msgID"])
+        {
+            nMsgID = bsonView["_msgID"].get_int32();
+        }
+        if(bsonView["_msgName"])
+        {
+            strMsgName = bsonView["_msgName"].get_string().value;
+        }
+
+        return true;
+    }
+
+}
+
+#endif
+
+bool isUpdateCombine(const rapidjson::Value& valJson)
+{
+    if(valJson.HasMember("updateMethod"))
+    {
+        if(std::string(valJson["updateMethod"].GetString()).compare("combine") == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool isUpdateReplace(const rapidjson::Value& valJson)
+{
+    if(valJson.HasMember("updateMethod"))
+    {
+        if(std::string(valJson["updateMethod"].GetString()).compare("replace") == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+template\<typename Type>
+bool valueUpdaterNumeric(void* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    if(valJson.HasMember(pszName))
+    {
+        const rapidjson::Value& valMember = valJson[pszName];
+        if(isUpdateCombine(valMember))
+        {
+            *reinterpret_cast\<Type*>(pvMsgContent) += (Type) valMember["value"].GetInt();
+        }
+        else
+        {
+            *reinterpret_cast\<Type*>(pvMsgContent) = (Type) valMember["value"].GetInt();
+        }
+        return true;
+    }
+    return false;
+}
+
+bool valueUpdaterInteger(int32_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    return valueUpdaterNumeric\<int32_t>(pvMsgContent, valJson, pszName);
+}
+
+bool valueUpdaterUnsignedInteger(uint32_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    return valueUpdaterNumeric\<uint32_t>(pvMsgContent, valJson, pszName);
+}
+
+#ifdef _MSC_VER
+
+bool valueUpdaterLong(long* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    return valueUpdaterNumeric\<long>(pvMsgContent, valJson, pszName);
+}
+
+bool valueUpdaterUnsignedLong(unsigned long* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    return valueUpdaterNumeric\<unsigned long>(pvMsgContent, valJson, pszName);
+}
+
+#else
+
+bool valueUpdaterLong(int32_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    return valueUpdaterNumeric\<int32_t>(pvMsgContent, valJson, pszName);
+}
+
+bool valueUpdaterUnsignedLong(uint32_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    return valueUpdaterNumeric\<uint32_t>(pvMsgContent, valJson, pszName);
+}
+
+#endif
+
+bool valueUpdaterShortInteger(int16_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    return valueUpdaterNumeric\<int16_t>(pvMsgContent, valJson, pszName);
+}
+
+bool valueUpdaterUnsignedShortInteger(uint16_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    return valueUpdaterNumeric\<uint16_t>(pvMsgContent, valJson, pszName);
+}
+
+#ifdef _MSC_VER
+bool valueUpdaterUnsignedShortInteger(wchar_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    return valueUpdaterUnsignedShortInteger(reinterpret_cast\<uint16_t*>(pvMsgContent), valJson, pszName);
+}
+#endif
+
+bool valueUpdaterLongInteger(int64_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    return valueUpdaterNumeric\<int64_t>(pvMsgContent, valJson, pszName);
+}
+
+bool valueUpdaterUnsignedLongInteger(uint64_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    return valueUpdaterNumeric\<uint64_t>(pvMsgContent, valJson, pszName);
+}
+
+bool valueUpdaterByte(uint8_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    return valueUpdaterNumeric\<uint8_t>(pvMsgContent, valJson, pszName);
+}
+
+bool valueUpdaterChar(char* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    return valueUpdaterNumeric\<char>(pvMsgContent, valJson, pszName);
+}
+
+bool valueUpdaterFloat(void* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    if(valJson.HasMember(pszName))
+    {
+        const rapidjson::Value& valMember = valJson[pszName];
+        if(isUpdateCombine(valMember))
+        {
+            *reinterpret_cast\<float*>(pvMsgContent) += valMember["value"].GetFloat();
+        }
+        else
+        {
+            *reinterpret_cast\<float*>(pvMsgContent) = valMember["value"].GetFloat();
+        }
+        return true;
+    }
+    return false;
+}
+
+bool valueUpdaterDouble(void* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    if(valJson.HasMember(pszName))
+    {
+        const rapidjson::Value& valMember = valJson[pszName];
+        if(isUpdateCombine(valMember))
+        {
+            *reinterpret_cast\<double*>(pvMsgContent) += valMember["value"].GetDouble();
+        }
+        else
+        {
+            *reinterpret_cast\<double*>(pvMsgContent) = valMember["value"].GetDouble();
+        }
+        return true;
+    }
+    return false;
+}
+
+bool valueUpdaterString(void* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    if(valJson.HasMember(pszName))
+    {
+        const rapidjson::Value& valMember = valJson[pszName];
+        if(isUpdateCombine(valMember))
+        {
+            return false;
+        }
+        std::string strValue = valMember["value"].GetString();
+        std::memcpy(pvMsgContent, strValue.c_str(), strValue.size());
+        return true;
+    }
+    return false;
+}
+
+bool valueUpdaterBoolean(void* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    if(valJson.HasMember(pszName))
+    {
+        const rapidjson::Value& valMember = valJson[pszName];
+        if(isUpdateCombine(valMember))
+        {
+            return false;
+        }
+        *reinterpret_cast\<bool*>(pvMsgContent) = valMember["value"].GetBool();
+        return true;
+    }
+    return false;
+}
+
+bool valueUpdaterFiletime(void* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    if(valJson.HasMember(pszName))
+    {
+        const rapidjson::Value& valMember = valJson[pszName];
+        if(isUpdateCombine(valMember))
+        {
+            int64_t llTime =  (((int64_t)((FILETIME*) pvMsgContent)->dwHighDateTime) \<\< 32) +  (int64_t) ((FILETIME*) pvMsgContent)->dwLowDateTime;
+            SYSTEMTIME sysTime = sytemtimeFromSystemTimeString(valMember["value"].GetString());
+            uint32_t uMillisecs(sysTime.wHour * 60);
+            uMillisecs += sysTime.wMinute;
+            uMillisecs *= 60;
+            uMillisecs += sysTime.wSecond;
+            uMillisecs *= 1000;
+            uMillisecs += sysTime.wMilliseconds;
+            llTime += (uMillisecs * (TICKS_PER_SECOND / 1000));
+            ((FILETIME*) pvMsgContent)->dwLowDateTime = static_cast\<uint32_t>((llTime & 0xFFFFFFFF));
+            ((FILETIME*) pvMsgContent)->dwHighDateTime = static_cast\<uint32_t>(llTime >\> 32);
+        }
+        else
+        {
+            *(FILETIME*) pvMsgContent = fileTimeFromSystemTimeString(valMember["value"].GetString());
+        }
+        return true;
+    }
+    return false;
+}
+
+template\<typename Type>
+bool valueUpdaterNumericArray(Type* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+	if (valJson.HasMember(pszName))
+	{
+		size_t nIndex(0);
+		const rapidjson::Value& valMember = valJson[pszName];
+		bool bCombine = isUpdateCombine(valMember);
+		for (rapidjson::Value::ConstValueIterator itVal = valMember["value"].Begin(); itVal != valMember["value"].End(); ++itVal, ++nIndex)
+		{
+			if (bCombine)
+			{
+				pvArrayTo[nIndex] += (Type)itVal->GetInt();
+			}
+			else
+			{
+				pvArrayTo[nIndex] = (Type)itVal->GetInt();
+			}
+		}
+		return true;
+	}
+	return false;
+}
+
+bool valueUpdaterIntegerArray(int32_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+	return valueUpdaterNumericArray\<int32_t>(pvArrayTo, valJson, pszName);
+}
+
+bool valueUpdaterUnsignedIntegerArray(uint32_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+	return valueUpdaterNumericArray\<uint32_t>(pvArrayTo, valJson, pszName);
+}
+
+#ifdef _MSC_VER
+
+bool valueUpdaterLongArray(long* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+	return valueUpdaterNumericArray\<long>(pvArrayTo, valJson, pszName);
+}
+
+bool valueUpdaterUnsignedLongArray(unsigned long* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+	return valueUpdaterNumericArray\<unsigned long>(pvArrayTo, valJson, pszName);
+}
+
+#else
+
+bool valueUpdaterLongArray(int32_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+	return valueUpdaterNumericArray\<int32_t>(pvArrayTo, valJson, pszName);
+}
+
+bool valueUpdaterUnsignedLongArray(uint32_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+	return valueUpdaterNumericArray\<uint32_t>(pvArrayTo, valJson, pszName);
+}
+
+#endif
+
+bool valueUpdaterShortIntegerArray(int16_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+	return valueUpdaterNumericArray\<int16_t>(pvArrayTo, valJson, pszName);
+}
+
+bool valueUpdaterUnsignedShortIntegerArray(uint16_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+	return valueUpdaterNumericArray\<uint16_t>(pvArrayTo, valJson, pszName);
+}
+
+#ifdef _MSC_VER
+bool valueUpdaterUnsignedShortIntegerArray(wchar_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    return valueUpdaterUnsignedShortInteger(reinterpret_cast\<uint16_t*>(pvMsgContent), valJson, pszName);
+}
+#endif
+
+bool valueUpdaterLongIntegerArray(int64_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+	return valueUpdaterNumericArray\<int64_t>(pvArrayTo, valJson, pszName);
+}
+
+bool valueUpdaterUnsignedLongIntegerArray(uint64_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+	return valueUpdaterNumericArray\<uint64_t>(pvArrayTo, valJson, pszName);
+}
+
+bool valueUpdaterByteArray(uint8_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+	return valueUpdaterNumericArray\<uint8_t>(pvArrayTo, valJson, pszName);
+}
+
+bool valueUpdaterCharArray(char* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+	return valueUpdaterNumericArray\<char>(pvArrayTo, valJson, pszName);
+}
+
+bool valueUpdaterFloatArray(float* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+	if (valJson.HasMember(pszName))
+	{
+		size_t nIndex(0);
+		const rapidjson::Value& valMember = valJson[pszName];
+		bool bCombine = isUpdateCombine(valMember);
+		for (rapidjson::Value::ConstValueIterator itVal = valJson["value"].Begin(); itVal != valJson["value"].End(); ++itVal, ++nIndex)
+		{
+			if (bCombine)
+			{
+				pvArrayTo[nIndex] += itVal->GetFloat();
+			}
+			else
+			{
+				pvArrayTo[nIndex] = itVal->GetFloat();
+			}
+		}
+		return true;
+	}
+	return false;
+}
+
+bool valueUpdaterDoubleArray(double* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+	if (valJson.HasMember(pszName))
+	{
+		size_t nIndex(0);
+		const rapidjson::Value& valMember = valJson[pszName];
+		bool bCombine = isUpdateCombine(valMember);
+		for (rapidjson::Value::ConstValueIterator itVal = valJson["value"].Begin(); itVal != valJson["value"].End(); ++itVal, ++nIndex)
+		{
+			if (bCombine)
+			{
+				pvArrayTo[nIndex] += itVal->GetDouble();
+			}
+			else
+			{
+				pvArrayTo[nIndex] = itVal->GetDouble();
+			}
+		}
+		return true;
+	}
+	return false;
+}
+
+bool valueUpdaterFiletimeArray(FILETIME* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+    if(valJson.HasMember(pszName))
+    {
+        const rapidjson::Value& valMember = valJson[pszName];
+        if(!isUpdateCombine(valMember))
+        {
+    		size_t nIndex(0);
+            for (rapidjson::Value::ConstValueIterator itVal = valJson["value"].Begin(); itVal != valJson["value"].End(); ++itVal, ++nIndex)
+            {
+                pvArrayTo[nIndex] = fileTimeFromSystemTimeString(itVal->GetString());
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+bool valueUpdaterBooleanArray(bool* pvArrayTo, const rapidjson::Value& valJson, const char* pszName)
+{
+    if(valJson.HasMember(pszName))
+    {
+        const rapidjson::Value& valMember = valJson[pszName];
+        if(!isUpdateCombine(valMember))
+        {
+    		size_t nIndex(0);
+            for (rapidjson::Value::ConstValueIterator itVal = valJson["value"].Begin(); itVal != valJson["value"].End(); ++itVal, ++nIndex)
+            {
+                pvArrayTo[nIndex] = itVal->GetBool();
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+static const std::string base64_chars =
+"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+"abcdefghijklmnopqrstuvwxyz"
+"0123456789+/";
+
+
+static inline bool is_base64(uint8_t c)
+{
+	return (isalnum(c) || (c == '+') || (c == '/'));
+}
+
+std::string base64_encode(uint8_t const* buf, size_t bufLen)
+{
+	std::string ret;
+	size_t i = 0;
+	size_t j = 0;
+	uint8_t char_array_3[3];
+	uint8_t char_array_4[4];
+
+	while (bufLen--)
+	{
+		char_array_3[i++] = *(buf++);
+		if (i == 3)
+		{
+			char_array_4[0] = (char_array_3[0] & 0xfc) >\> 2;
+			char_array_4[1] = ((char_array_3[0] & 0x03) \<\< 4) + ((char_array_3[1] & 0xf0) >\> 4);
+			char_array_4[2] = ((char_array_3[1] & 0x0f) \<\< 2) + ((char_array_3[2] & 0xc0) >\> 6);
+			char_array_4[3] = char_array_3[2] & 0x3f;
+
+			for (i = 0; (i \< 4); i++)
+			{
+				ret += base64_chars[char_array_4[i]];
+			}
+			i = 0;
+		}
+	}
+
+	if (i)
+	{
+		for (j = i; j \< 3; j++)
+		{
+			char_array_3[j] = '\0';
+		}
+
+		char_array_4[0] = (char_array_3[0] & 0xfc) >\> 2;
+		char_array_4[1] = ((char_array_3[0] & 0x03) \<\< 4) + ((char_array_3[1] & 0xf0) >\> 4);
+		char_array_4[2] = ((char_array_3[1] & 0x0f) \<\< 2) + ((char_array_3[2] & 0xc0) >\> 6);
+		char_array_4[3] = char_array_3[2] & 0x3f;
+
+		for (j = 0; (j \< i + 1); j++)
+		{
+			ret += base64_chars[char_array_4[j]];
+		}
+
+		while ((i++ \< 3))
+		{
+			ret += '=';
+		}
+	}
+
+	return ret;
+}
+
+std::vector\<uint8_t> base64_decode(std::string const& encoded_string)
+{
+	size_t in_len = encoded_string.size();
+	size_t i = 0;
+	size_t j = 0;
+	size_t in_ = 0;
+	uint8_t char_array_4[4], char_array_3[3];
+	std::vector\<uint8_t> ret;
+
+	while (in_len-- && (encoded_string[in_] != '=') && is_base64(encoded_string[in_]))
+	{
+		char_array_4[i++] = encoded_string[in_]; in_++;
+		if (i == 4)
+		{
+			for (i = 0; i \< 4; i++)
+			{
+				char_array_4[i] = (uint8_t) base64_chars.find(char_array_4[i]);
+			}
+			char_array_3[0] = (char_array_4[0] \<\< 2) + ((char_array_4[1] & 0x30) >\> 4);
+			char_array_3[1] = ((char_array_4[1] & 0xf) \<\< 4) + ((char_array_4[2] & 0x3c) >\> 2);
+			char_array_3[2] = ((char_array_4[2] & 0x3) \<\< 6) + char_array_4[3];
+
+			for (i = 0; (i \< 3); i++)
+			{
+				ret.push_back(char_array_3[i]);
+			}
+			i = 0;
+		}
+	}
+
+	if (i)
+	{
+		for (j = i; j \< 4; j++)
+		{
+			char_array_4[j] = 0;
+		}
+		for (j = 0; j\< 4; j++)
+		{
+			char_array_4[j] = (uint8_t) base64_chars.find(char_array_4[j]);
+		}
+
+		char_array_3[0] = (char_array_4[0] \<\< 2) + ((char_array_4[1] & 0x30) >\> 4);
+		char_array_3[1] = ((char_array_4[1] & 0xf) \<\< 4) + ((char_array_4[2] & 0x3c) >\> 2);
+		char_array_3[2] = ((char_array_4[2] & 0x3) \<\< 6) + char_array_4[3];
+
+		for (j = 0; (j \< i - 1); j++)
+		{
+			ret.push_back(char_array_3[j]);
+		}
+	}
+
+	return ret;
+}
+
+const char ALPHA_NUMERIC[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890 _-#*&%+@!$.,;'\"[]{}()\<>//?";
+
+void AppendStringToBSON(bsoncxx::builder::basic::sub_document& bsonDoc, const char* pszName, const char* pszValue, size_t nMaxLength)
+{
+    if (strnlen_s(pszValue, nMaxLength) == nMaxLength)
+    {
+        size_t nEndOfString = std::string(pszValue, nMaxLength).find_first_not_of(ALPHA_NUMERIC);
+        bsonDoc.append(kvp(std::string(pszName), std::string(pszValue, nEndOfString)));
+    }
+    else
+    {
+        bsonDoc.append(kvp(std::string(pszName), pszValue));
+    }
+
+}
+
+>>

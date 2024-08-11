@@ -1,0 +1,33 @@
+addBoltMember(member) ::= <%
+<member.typescriptName>: <member.boltType>
+%>
+
+addBoltReferenceMember(member) ::= <%
+<if(member.isList)>
+<member.referenceName>: <member.referenceType>[]
+<else>
+<member.referenceName>: <member.referenceType>
+<endif>
+%>
+
+outputBoltType(type) ::= <<
+type <type.interfaceName> {
+    <type.tableMembers:{member|<addBoltMember(member)>};separator=",\n">
+    <type.foreignKeyMembers:{member|<addBoltReferenceMember(member)>};separator=",\n">
+    <type.externalReferenceMembers:{member|<addBoltReferenceMember(member)>};separator=",\n">
+}
+>>
+
+outputBoltPath(method) ::= <%
+path /<method.pathParts:{part|<if(part.hasParameter)>{<part.parameter.parameter.name>\}<else><part.name><endif>};separator="/"> is <method.returnType.interfaceName><if(method.isReturnList)>[]<endif>;
+%>
+
+buildBoltSchema(api) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <api.generateDate>
+
+<api.uniqueDependencies:{type|<outputBoltType(type)>};separator="\n">
+
+<api.methods:{method|<outputBoltPath(method)>};separator="\n">
+
+>>

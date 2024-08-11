@@ -1,0 +1,285 @@
+import "common.stg"
+
+declareMessageConsumer(message) ::= <<
+virtual bool Consume<message.plainName>(const <message.name>& msg) = 0;
+>>
+
+declareMessageHandler(message) ::= <<
+virtual void Handle<message.plainName>(const <message.name>& msg, size_t nMsgLength) = 0;
+>>
+
+declareMessageHandlerImpl(message) ::= <<
+virtual void Handle<message.plainName>(const <message.name>& msg, size_t nMsgLength);
+>>
+
+// Abstract type declaring interface to the component message consumer
+
+declareComponentInterface(component) ::= <<
+
+class <component.componentName>MessageConsumer
+    : public deprecated::MessageConsumer
+{
+public:
+    <component.messages:{message|<declareMessageConsumer(message)><\n>}>
+};
+
+typedef std::shared_ptr\<<component.componentName>MessageConsumer> <component.componentName>MessageConsumerPtr_t;
+
+class <component.componentName>MessageHandler
+{
+public:
+
+    <component.messages:{message|<declareMessageHandler(message)><\n>}>
+};
+
+class <component.componentName>Messages :
+    public <component.componentName>MessageHandler, public deprecated::MessageHandlerImpl
+{
+public:
+
+    virtual const std::set\<uint16_t>& getMessages() const;
+    virtual bool onHandleMessage(const CPOMsgEx* pmsgHandle);
+    virtual const char* getHandlerName() const;
+
+    <component.messages:{message|<declareMessageHandlerImpl(message)><\n>}>
+
+};
+>>
+
+declareComponentInterfaces(schema, component) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#pragma once
+
+#include \<JTStandard.h>
+#include \<cougar-messages.h>
+#include \<cougar-consumer-builder.h>
+#include \<functional>
+#include \<vector>
+#include \<array>
+
+<declareComponentInterface(component)>
+>>
+
+declareComponentMockImpl(schema, component) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#pragma once
+
+#ifdef MOCKBUILDER_EXPORTS
+#define MOCK_INTERFACE _declspec(dllexport)
+#else
+#define MOCK_INTERFACE _declspec(dllimport)
+#endif
+
+#include \<string>
+#include \<memory>
+#include \<cougar-consumer-builder.h>
+
+extern "C" MOCK_INTERFACE void buildMessageConsumer(const std::string& strComponentName, IMessageConsumer*& pmsgConsumer);
+extern "C" MOCK_INTERFACE void destroyMessageConsumer(void* pmsgConsumer);
+
+>>
+
+declareComponentInterfacesHeader(schema, components) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#pragma once
+
+<components:{component|#include "<component.componentName>ComponentInterface.h"};separator="\n">
+
+>>
+
+declareConsumerBuilderHelpers(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#pragma once
+
+#include \<string>
+#include \<memory>
+#include \<vector>
+#include \<set>
+#include \<map>
+#include \<functional>
+#include \<algorithm>
+
+#ifdef _USING_MONGO
+#include \<bsoncxx/builder/basic/document.hpp>
+#include \<bsoncxx/json.hpp>
+#include \<mongocxx/pool.hpp>
+
+typedef std::shared_ptr\<mongocxx::pool> MongoPoolPtr_t;
+#endif
+#include \<thread>
+
+// Forward declaration to reduce dependencies
+
+class CPOMsgEx;
+
+typedef std::function\<void(const std::vector\<uint16_t>&)> MessageSubscriberFn_t;
+typedef std::function\<bool(uint16_t uMsgId, void* pvMsgContent, size_t nMsgSize)> MessagePublisherFn_t;
+
+namespace deprecated
+{
+class MessageHandler;
+typedef std::shared_ptr\<MessageHandler> MessageHandlerPtr_t;
+typedef std::vector\<MessageHandlerPtr_t> MessageHandlerVtr_t;
+
+typedef std::map\<std::string, MessageHandlerPtr_t> MessageHandlerMap_t;
+
+class MessageConsumer;
+typedef std::shared_ptr\<MessageConsumer> MessageConsumerPtr_t;
+typedef std::vector\<MessageConsumerPtr_t> MessageConsumerVtr_t;
+}
+
+class MessageDistributor;
+typedef std::shared_ptr\<MessageDistributor> MessageDistributorPtr_t;
+class MessageDistributorRunner;
+typedef std::shared_ptr\<MessageDistributorRunner> MessageDistributorRunnerPtr_t;
+
+namespace <schema.schemaNamespace>
+{
+    class Logger;
+    typedef std::shared_ptr\<Logger> LoggerPtr_t;
+}
+class CDatabaseBase;
+typedef std::shared_ptr\<CDatabaseBase> CDatabaseBasePtr_t;
+
+namespace deprecated
+{
+class MessageHandler
+{
+public:
+    virtual bool initialiseHandler
+    (
+        MessageDistributorPtr_t& pmsgDistributor
+        , <schema.schemaNamespace>::LoggerPtr_t& plogger
+        , CDatabaseBasePtr_t& pdatabaseCougar
+#ifdef _USING_MONGO
+        , MongoPoolPtr_t& pmongoPool
+        , const std::string& strDatabase
+        , const std::string& strComponentCollection
+#endif
+    ) = 0;
+    virtual void subscribeToMessages() = 0;
+    virtual const std::set\<uint16_t>& getMessages() const = 0;
+    virtual bool onHandleMessage(const CPOMsgEx* pmsgHandle) = 0;
+    virtual const char* getHandlerName() const = 0;
+    virtual bool addConsumer(const MessageConsumerPtr_t& msgConsumer) = 0;
+    virtual bool initialiseConsumer() = 0;
+    virtual bool start() = 0;
+};
+
+class MessageHandlerImpl : public MessageHandler
+{
+public:
+    virtual bool initialiseHandler
+    (
+        MessageDistributorPtr_t& pmsgDistributor
+        , <schema.schemaNamespace>::LoggerPtr_t& plogger
+        , CDatabaseBasePtr_t& pdatabaseCougar
+#ifdef _USING_MONGO
+        , MongoPoolPtr_t& pmongoPool
+        , const std::string& strDatabase
+        , const std::string& strComponentCollection
+#endif
+    );
+    virtual void subscribeToMessages();
+    virtual bool addConsumer(const MessageConsumerPtr_t& msgConsumer);
+    virtual bool initialiseConsumer();
+    virtual bool start();
+
+protected:
+
+    <schema.schemaNamespace>::LoggerPtr_t m_plogger;
+    CDatabaseBasePtr_t m_pdatabaseCougar;
+    MessageConsumerVtr_t m_listConsumers;
+    MessageDistributorRunnerPtr_t m_pmsgDistributorRunner;
+
+#ifdef _USING_MONGO
+    MongoPoolPtr_t m_pmongoPool;
+    std::string m_strDatabaseName;
+    std::string m_strCollection;
+#endif
+};
+
+class MessageConsumer
+{
+ public:
+
+    virtual void setPublisher(MessagePublisherFn_t fnPublisher) = 0;
+    virtual bool isCompatibleConsumer(const MessageHandler* pmsgHandler) const = 0;
+    virtual const char* getHandlerName() const = 0;
+};
+
+typedef bool(_stdcall* ComponentProviderFn)(const std::string&, MessageConsumer*&);
+typedef void(_stdcall* ComponentDeleterFn)(void*);
+
+class DllHandleScope
+{
+public:
+
+    DllHandleScope(HMODULE handle)
+        : m_hDllInstance(handle)
+    {
+    }
+
+    template\<typename FunctionType>
+    bool getProcedureByName(const std::string& strProcName, FunctionType& fnType) const
+    {
+        if (isValid())
+        {
+            FARPROC procByName = ::GetProcAddress((HMODULE)m_hDllInstance, strProcName.c_str());
+            if (procByName != NULL)
+            {
+                fnType = reinterpret_cast\<FunctionType>(procByName);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    virtual ~DllHandleScope()
+    {
+        if (isValid())
+        {
+            ::FreeLibrary(m_hDllInstance);
+        }
+    }
+
+    bool isValid() const
+    {
+        return m_hDllInstance != NULL;
+    }
+
+    HMODULE m_hDllInstance;
+};
+
+typedef std::shared_ptr\< DllHandleScope> DllHandleScopePtr_t;
+typedef std::vector\< DllHandleScopePtr_t> DllHandleScopeVtr_t;
+
+class ConsumerProvider
+{
+public:
+
+    ConsumerProvider(const DllHandleScopePtr_t& pdllHandle);
+    bool isValid() const;
+    bool buildConsumer(const std::string& strComponentName, MessageConsumerPtr_t& pmsgConsumer) const;
+
+private:
+
+    ComponentProviderFn m_fnProvider;
+    ComponentDeleterFn m_fnDeleter;
+};
+
+typedef std::shared_ptr\<ConsumerProvider> ConsumerProviderPtr_t;
+
+bool LinkToDynamic(const std::string& strFileName, MessageHandlerMap_t& mapHandlers, DllHandleScopeVtr_t& listDllScopes);
+bool buildMessageHandler(const std::string& strName, MessageHandlerPtr_t& phandler);
+}
+
+>>

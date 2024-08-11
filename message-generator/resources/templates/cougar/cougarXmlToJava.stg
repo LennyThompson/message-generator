@@ -1,0 +1,69 @@
+memberAsJavaMember(member) ::= <%
+m_<member.javaHungarian><member.typescriptName>
+%>
+
+declareJavaMember(member) ::= <<
+@SerializedName("<member.typescriptName>")
+private <member.javaType> <memberAsJavaMember(member)>;
+>>
+
+declareJavaGetSet(member) ::= <<
+@Override
+public <member.javaType> get<member.typescriptName>() { return <memberAsJavaMember(member)>; }
+@Override
+public void set<member.typescriptName>(<member.javaType> value) { <memberAsJavaMember(member)> = value; }
+>>
+
+setMemberDefault(member) ::= <%
+<memberAsJavaMember(member)> = <member.javaDefault>
+%>
+
+setMemberFromParameter(member) ::= <%
+<memberAsJavaMember(member)> = <member.typesciptName>
+%>
+
+memberAsParameter(member) ::= <%
+<member.javaType> <member.typesciptName>
+%>
+
+generateJavaClass(packageName, type) ::= <<
+package <packageName>;
+
+import com.google.gson.*;
+import com.google.gson.annotations.SerializedName;
+import java.lang.reflect.Type;
+import java.util.*;
+
+public class <type.className> implements <type.interfaceName>,  JsonDeserializer<type.className>
+{
+    <type.members:{member|<declareJavaMember(member)>};separator="\n">
+
+    public <type.className>()
+    {
+        <type.members:{member|<setMemberDefault(member)>};separator=";\n">
+    }
+
+    public <type.className>
+        (
+            <type.members:{member|<memberAsParameter(member)>};separator=",\n">
+        )
+    {
+        <type.members:{member|<setMemberFromParameter(member)>};separator=";\n">
+    }
+
+    <type.members:{member|<declareJavaGetSet(member)>};separator="\n">
+
+    public <type.className> deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException
+    {
+        GsonBuilder gsonBuilder = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, new LocalDateTimeSerialiser());
+        <type.externalReferences:{extType|gsonBuilder.registerTypeAdapter(<extType.className>.class, new <extType.className>())};separator=";\n">
+
+        Gson gsonInstance = gsonBuilder.create();
+        <type.className> type<type.className> = gsonInstance.fromJson(json, <type.className>.class);
+        return type<type.className>;
+    }
+
+}
+
+ >>
+

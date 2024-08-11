@@ -1,0 +1,263 @@
+import "common.stg"
+
+memberAsBSON(message, member, varName, testArray, arrayIndex, bsonDoc, variableArraySize) ::= <<
+<if(testArray && member.isArray)>
+<bsonDoc>.append(kvp("<member.strippedName>",
+    <if(member.isVariableLengthArray)>
+    [<varName>, <variableArraySize>](bsoncxx::builder::basic::sub_array subArrayDoc)
+    {
+        for(size_t nIndex(0); nIndex \< <variableArraySize>; ++nIndex)
+        {
+            auto value = <varName>-><member.name><arrayIndex>[nIndex];
+    <else>
+    [<varName>](bsoncxx::builder::basic::sub_array subArrayDoc)
+    {
+        for(auto value : <varName>-><member.name><arrayIndex>)
+        {
+    <endif>
+    <if(member.hasMessageType)>
+            subArrayDoc.append
+            (
+                [value](bsoncxx::builder::basic::sub_document subDoc)
+                {
+        <if(member.messageType.isNonMessage)>
+                    append<member.messageType.plainName>_RawDataAsBSON(subDoc, &value);
+        <else>
+                    <member.messageType.name>_Msg::doAppendBSONToDocument(subDoc, &value, 0);
+        <endif>
+                }
+            );
+    <else>
+        <if(member.hasBsonCast)>
+            subArrayDoc.append(<member.bsonTransformFn>{<member.bsonCast>(value)});
+        <else>
+            subArrayDoc.append(value);
+        <endif>
+    <endif>
+        }
+    }
+    ));
+<else>
+    <if(member.hasMessageType)>
+        <if(member.messageType.isNonMessage)>
+<bsonDoc>.append(kvp("<member.strippedName>",
+    [<varName>](bsoncxx::builder::basic::sub_document subDoc<member.messageType.plainName>)
+    {
+        append<member.messageType.plainName>_RawDataAsBSON(subDoc<member.messageType.plainName>, &<varName>-><member.name><arrayIndex>);
+    }));
+        <else>
+<bsonDoc>.append(kvp("<member.strippedName>",
+    [<varName>](bsoncxx::builder::basic::sub_document subDoc<member.messageType.plainName>)
+    {
+        <member.messageType.name>_Msg::doAppendBSONToDocument(subDoc<member.messageType.plainName>, reinterpret_cast\<const void*>(&<varName>-><member.name><arrayIndex>), 0);
+    }));
+        <endif>
+    <elseif(member.isFiletime)>
+<bsonDoc>.append(kvp("<member.strippedName>", convertFileTimeToBsonDate(<varName>-><member.name><arrayIndex>)));
+    <elseif(member.hasEnumType)>
+<bsonDoc>.append(kvp("<member.strippedName>", <member.enumType.shortName>_Enum(<varName>-><member.name><arrayIndex>).c_str()));
+    <elseif(member.isBoolean)>
+<bsonDoc>.append(kvp("<member.strippedName>", bsoncxx::types::b_bool{<varName>-><member.name><arrayIndex> == 0 ? false : true}));
+    <elseif(member.isString)>
+        <if(member.isVariableLengthArray && !member.isArrayPointer)>
+AppendStringToBSON(<bsonDoc>, "<member.strippedName>", &<varName>-><member.name><arrayIndex>, nVariableArraySize);
+        <else>
+AppendStringToBSON(<bsonDoc>, "<member.strippedName>", <varName>-><member.name><arrayIndex>, <if(member.hasNumericArraySize)><member.numericArraySize><else>std::strlen(<varName>-><member.name><arrayIndex>))<endif>);
+        <endif>
+    <else>
+        <if(member.hasBsonCast)>
+<bsonDoc>.append(kvp("<member.strippedName>", <member.bsonTransformFn>{<member.bsonCast>(<varName>-><member.name><arrayIndex>)}));
+        <else>
+<bsonDoc>.append(kvp("<member.strippedName>", <member.bsonTransformFn>{<varName>-><member.name><arrayIndex>}));
+        <endif>
+    <endif>
+<endif>
+>>
+
+memberFromBSON(message, member, varName, arrayIndex, bsonDoc) ::= <<
+<if(member.isArray)>
+{
+    bsoncxx::types::b_array barr<member.strippedName> = <bsonDoc>["<member.strippedName>"].get_array();
+    size_t index(0);
+    for(auto val<member.strippedName> : barr<member.strippedName>.operator bsoncxx::array::view())
+    {
+        auto& member = <varName>.<member.name><arrayIndex>[index];
+    <if(member.hasMessageType)>
+        <if(member.messageType.isNonMessage)>
+        build<member.messageType.plainName>_FromBSON(val<member.strippedName>.get_document(), member);
+        <else>
+        <member.messageType.name>_Msg::doFromBSONDocument(val<member.strippedName>.get_document(), member);
+        <endif>
+    <else>
+        <if(member.isFileTime)>
+        member = convertBsonDateToFileTime(barr<member.strippedName>.value[index].get_date());
+        <elseif(member.hasEnumType)>
+        member = <member.enumType.shortName>_FromEnumStringValue(std::string(val<member.strippedName>.get_string().value));
+        <elseif(member.isBoolean)>
+        member = val<member.strippedName>.get_bool() ? 1 : 0;
+        <elseif(member.isString)>
+        member = std::string(val<member.strippedName>.get_string().value);
+        <else>
+        member = val<member.strippedName>.<member.bsonGetter>;
+        <endif>
+    <endif>
+        ++index;
+    }
+}
+<else>
+    <if(member.hasMessageType)>
+        <if(member.messageType.isNonMessage)>
+build<member.messageType.plainName>_FromBSON(<bsonDoc>["<member.strippedName>"].get_document(), <varName>.<member.name><arrayIndex>);
+        <else>
+<member.messageType.name>_Msg::doFromBSONDocument(<bsonDoc>["<member.strippedName>"].get_document(), <varName>.<member.name><arrayIndex>);
+        <endif>
+    <elseif(member.isFiletime)>
+<varName>.<member.name><arrayIndex> = convertBsonDateToFileTime(<bsonDoc>["<member.strippedName>"].get_date());
+    <elseif(member.hasEnumType)>
+<varName>.<member.name><arrayIndex> = <member.enumType.shortName>_FromEnumStringValue(std::string(<bsonDoc>["<member.strippedName>"].get_string().value));
+    <elseif(member.isBoolean)>
+<varName>.<member.name><arrayIndex> = <bsonDoc>["<member.strippedName>"].get_bool() ? 1 : 0;
+    <elseif(member.isString)>
+std::string str<member.strippedName>(<bsonDoc>["<member.strippedName>"].get_string().value);
+        <if(member.isVariableLengthArray)>
+            <if(member.hasSizeMember)>
+std::memcpy(&<varName>.<member.name><arrayIndex>, str<member.strippedName>.c_str(), str<member.strippedName>.size() >= (size_t) <varName>.<member.sizeMember.name> ? (size_t) (<varName>.<member.sizeMember.name> > 0 ? <varName>.<member.sizeMember.name> - 1 : 0) : str<member.strippedName>.size());
+            <else>
+std::memcpy(&<varName>.<member.name><arrayIndex>, str<member.strippedName>.c_str(), str<member.strippedName>.size());
+            <endif>
+        <else>
+std::memcpy(&<varName>.<member.name><arrayIndex>, str<member.strippedName>.c_str(), str<member.strippedName>.size() >= <member.numericArraySize> ? <member.numericArraySize> - 1 : str<member.strippedName>.size());
+        <endif>
+    <else>
+<varName>.<member.name><arrayIndex> = <bsonDoc>["<member.strippedName>"].<member.bsonGetter>;
+    <endif>
+<endif>
+>>
+
+
+
+localMemberAsBSON(message, member, testArray, arrayIndex, bsonDoc, variableArraySize) ::= <<
+<if(testArray && member.isArray)>
+<bsonDoc>.append(builder::basic::kvp("<member.strippedName>",
+    <if(member.isVariableLengthArray)>
+    [this, <variableArraySize>](bsoncxx::builder::basic::sub_array subArrayDoc)
+    {
+        for(size_t nIndex(0); nIndex \< <variableArraySize>; ++nIndex)
+        {
+            auto value = <member.name><arrayIndex>[nIndex];
+    <else>
+    [this](bsoncxx::builder::basic::sub_array subArrayDoc)
+    {
+        for(auto value : <member.name><arrayIndex>)
+        {
+    <endif>
+    <if(member.hasMessageType)>
+            subArrayDoc.append
+            (
+                [value](bsoncxx::builder::basic::sub_document subDoc)
+                {
+                    <if(member.messageType.hasVariableLengthArray)>
+                    reinterpret_cast\<const <member.messageType.plainName>_t&>(value).AppendBSONToDocument(subDoc, <variableArraySize>);
+                    <else>
+                    reinterpret_cast\<const <member.messageType.plainName>_t&>(value).AppendBSONToDocument(subDoc, 0);
+                    <endif>
+                }
+            );
+    <else>
+        <if(member.hasBsonCast)>
+            subArrayDoc.append(<member.bsonTransformFn>{<member.bsonCast>(value)});
+        <else>
+            subArrayDoc.append(value);
+        <endif>
+    <endif>
+        }
+    }
+    ));
+<else>
+    <if(member.hasMessageType)>
+<bsonDoc>.append(builder::basic::kvp("<member.strippedName>",
+    <if(member.messageType.hasVariableLengthArrayMember || member.messageType.hasMemberWithVariableLengthArrayMember)>
+    [this, <variableArraySize>](bsoncxx::builder::basic::sub_document subDoc<member.messageType.plainName>)
+    {
+        reinterpret_cast\<const <member.messageType.plainName>_t&>(<member.name><arrayIndex>).AppendBSONToDocument(subDoc<member.messageType.plainName>, <variableArraySize>);
+    }));
+    <else>
+    [this](bsoncxx::builder::basic::sub_document subDoc<member.messageType.plainName>)
+    {
+        reinterpret_cast\<const <member.messageType.plainName>_t&>(<member.name><arrayIndex>).AppendBSONToDocument(subDoc<member.messageType.plainName>, 0);
+    }));
+    <endif>
+    <elseif(member.isFiletime)>
+<bsonDoc>.append(builder::basic::kvp("<member.strippedName>", convertFileTimeToBsonDate(<member.name><arrayIndex>)));
+    <elseif(member.hasEnumType)>
+<bsonDoc>.append(builder::basic::kvp("<member.strippedName>", <member.enumType.shortName>_Enum(<member.name><arrayIndex>).c_str()));
+    <elseif(member.isBoolean)>
+<bsonDoc>.append(builder::basic::kvp("<member.strippedName>", bsoncxx::types::b_bool{<member.name><arrayIndex> == 0 ? false : true}));
+    <elseif(member.isString)>
+        <if(member.isVariableLengthArray && !member.isArrayPointer)>
+AppendStringToBSON(<bsonDoc>, "<member.strippedName>", &<member.name><arrayIndex>, <variableArraySize>);
+        <else>
+AppendStringToBSON(<bsonDoc>, "<member.strippedName>", <member.name><arrayIndex>, <if(member.hasNumericArraySize)><member.numericArraySize><else>std::strlen(<member.name><arrayIndex>))<endif>);
+        <endif>
+    <else>
+        <if(member.hasBsonCast)>
+<bsonDoc>.append(builder::basic::kvp("<member.strippedName>", <member.bsonTransformFn>{<member.bsonCast>(<member.name><arrayIndex>)}));
+        <else>
+<bsonDoc>.append(builder::basic::kvp("<member.strippedName>", <member.bsonTransformFn>{<member.name><arrayIndex>}));
+        <endif>
+    <endif>
+<endif>
+>>
+
+localMemberFromBSON(message, member, arrayIndex, bsonDoc) ::= <<
+<if(member.isArray)>
+{
+    bsoncxx::types::b_array barr<member.strippedName> = <bsonDoc>["<member.strippedName>"].get_array();
+    size_t index(0);
+    for(bsoncxx::array::view::const_iterator val<member.strippedName> = barr<member.strippedName>.operator bsoncxx::array::view().begin(); val<member.strippedName> != barr<member.strippedName>.operator bsoncxx::array::view().end(); ++val<member.strippedName>)
+    {
+    <if(member.hasMessageType)>
+        auto& member = <member.name><arrayIndex>[index];
+        <member.messageType.plainName>_t::FromBSON(val<member.strippedName>->get_document(), reinterpret_cast\<<member.messageType.plainName>_t*>(&member));
+    <else>
+        <if(member.isFileTime)>
+        <member.name><arrayIndex>[index] = convertBsonDateToFileTime(val<member.strippedName>->get_date());
+        <elseif(member.hasEnumType)>
+        <member.name><arrayIndex>[index] = <member.enumType.shortName>_FromEnumStringValue(bsoncxx::string::to_string(val<member.strippedName>->get_string().value));
+        <elseif(member.isBoolean)>
+        <member.name><arrayIndex>[index] = val<member.strippedName>->get_bool() ? 1 : 0;
+        <elseif(member.isString)>
+        <member.name><arrayIndex>[index] = bsoncxx::string::to_string(val<member.strippedName>->get_string().value));
+        <else>
+        <member.name><arrayIndex>[index] = val<member.strippedName>-><member.bsonGetter>;
+        <endif>
+    <endif>
+        ++index;
+    }
+}
+<else>
+    <if(member.hasMessageType)>
+<member.messageType.plainName>_t::FromBSON(<bsonDoc>["<member.strippedName>"].get_document(), reinterpret_cast\<<member.messageType.plainName>_t*>(&<member.name><arrayIndex>));
+    <elseif(member.isFiletime)>
+<member.name><arrayIndex> = convertBsonDateToFileTime(<bsonDoc>["<member.strippedName>"].get_date());
+    <elseif(member.hasEnumType)>
+<member.name><arrayIndex> = <member.enumType.shortName>_FromEnumStringValue(bsoncxx::string::to_string(<bsonDoc>["<member.strippedName>"].get_string().value));
+    <elseif(member.isBoolean)>
+<member.name><arrayIndex> = <bsonDoc>["<member.strippedName>"].get_bool() ? 1 : 0;
+    <elseif(member.isString)>
+std::string str<member.strippedName> = bsoncxx::string::to_string(<bsonDoc>["<member.strippedName>"].get_string().value);
+        <if(member.isVariableLengthArray)>
+            <if(member.hasSizeMember)>
+std::memcpy(&<member.name><arrayIndex>, str<member.strippedName>.c_str(), str<member.strippedName>.size() >= (size_t) <member.sizeMember.name> ? (size_t) (<member.sizeMember.name> > 0 ? <member.sizeMember.name> - 1 : 0) : str<member.strippedName>.size());
+            <else>
+std::memcpy(&<member.name><arrayIndex>, str<member.strippedName>.c_str(), str<member.strippedName>.size());
+            <endif>
+        <else>
+std::memcpy(&<member.name><arrayIndex>, str<member.strippedName>.c_str(), str<member.strippedName>.size() >= <member.numericArraySize> ? <member.numericArraySize> - 1 : str<member.strippedName>.size());
+        <endif>
+    <else>
+<member.name><arrayIndex> = <bsonDoc>["<member.strippedName>"].<member.bsonGetter>;
+    <endif>
+<endif>
+>>
+

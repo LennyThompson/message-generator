@@ -1,0 +1,319 @@
+import "common.stg"
+
+selectTraceMemberJsonPath(traceMember) ::=
+<<
+<traceMember.traceMemberJsonPath:{jsonPath|{ <jsonPath.jsonPath> \}};separator=",\n">
+>>
+
+selectByCardID(message, thisVar, traceMember, collSource, from, to) ::=
+<<
+<collSource>.find
+(
+    {
+        $and :
+        [
+            { "_msgID" : <traceMember.generatedMessage.define.name> },
+            { "_siteID" : <thisVar>._siteID },
+<if(traceMember.isSameMessageAsGenerator)>
+            { "_timestamp" : { $ne : <thisVar>._timestamp } },
+<endif>
+            <selectTraceMemberJsonPath(traceMember)>
+        ]
+    }
+)
+.forEach
+(
+    function(valGenerated)
+    {
+        try
+        {
+            delete valGenerated["_id"];
+            valGenerated["_latency"] = valGenerated._timestamp - value._timestamp;
+            listTrace.push(valGenerated);
+        }
+        catch(exc)
+        {
+            print(exc);
+        }
+    }
+);
+>>
+
+buildCompareTrace(component, message) ::= 
+<<
+// To run this stand alone uncomment this line.
+// load("<component.componentName>-messages.js");
+
+function compare<message.define.plainName>(cardTraceProd, cardTraceMulti, strCardId, collectionErrors)
+{
+    print("  " + strCardId + " <message.define.name> messages");
+    var objError;
+    if(cardTraceProd.<message.define.name> && cardTraceMulti.<message.define.name>)
+    {
+        if(cardTraceProd.<message.define.name>.input.length == cardTraceMulti.<message.define.name>.input.length)
+        {
+            if(cardTraceProd.<message.define.name>.input.length == 0)
+            {
+                print("   " + strCardId + " has same no <message.define.name> input messages????");
+            }
+            else
+            {
+                cardTraceProd.<message.define.name>.input
+                .forEach
+                (
+                    function(traceProd)
+                    {
+                        // print("   " + strCardId + " searching for equivalent transaction " + traceProd.in.TransID);
+                        traceMulti = cardTraceMulti.<message.define.name>.input
+                        .find
+                        (
+                            function(traceMsg)
+                            {
+                                return traceProd.in.TransID == traceMsg.in.TransID;
+                            }
+
+                        );
+                        if(traceMulti)
+                        {
+                            // print("   " + strCardId + " has equivalent transaction " + traceProd.in.TransID);
+                            if(traceMulti.trace.length == traceProd.trace.length)
+                            {
+                                traceProd.trace.forEach
+                                (
+                                    function(msgOut)
+                                    {
+                                        let msgFound = traceMulti.trace.find
+                                        (
+                                            function(msgMulti)
+                                            {
+                                                if(msgMulti._msgID == msgOut._msgID)
+                                                {
+                                                    return true;
+                                                }
+                                            }
+                                        );
+
+                                        if(!msgFound)
+                                        {
+                                            let strMsg = strCardId + " trace error, message " + msgOut._msgID + " not found";
+                                            print("     **** ERROR **** " + strMsg);
+                                            objError = { msg: strMsg, prod : traceProd, test : traceMulti };
+                                        }
+                                    }
+                                )
+                            }
+                            else
+                            {
+                                let strMsg = strCardId + " trace messages do not match for <message.define.name>";
+                                print("     **** ERROR **** " + strMsg);
+                                objError = { msg: strMsg, prod : traceProd, test : traceMulti };
+                            }
+                        }
+                        else
+                        {
+                            let strMsg = strCardId + " has no equivalent transaction " + traceProd.in.TransID;
+                            print("   **** ERROR **** " + strMsg);
+                            objError = { msg: strMsg, prod : traceProd };
+                        }
+                    }
+                );
+            }
+        }
+        else
+        {
+            print("   " + strCardId + " **** ERROR **** different number of <message.define.name> input messages");
+        }
+    }
+    else
+    {
+        if(!cardTraceProd.<message.define.name>)
+        {
+            print(" " + strCardId + " ^^^^ INFO ^^^^ card has no <message.define.name> input messages");
+        }
+        else
+        {
+            let strMsg = strCardId + " different <message.define.name> input messages recorded (prod has none)";
+            print("   **** ERROR ****" + strMsg);
+            objTest = { msg : strMsg, test : cardTraceMulti.<message.define.name> };
+        }
+    }
+
+    if(objError)
+    {
+        collectionErrors.insertOne(objError);
+    }
+}
+
+>>
+
+addExternalKeySnippet(externalKey) ::= <% <if(externalKey.hasExternalKey)><externalKey.keySnippet>;<endif> %>
+
+selectOutMessages(component, message) ::=
+<<
+<if(message.hasGeneratedMessages && message.hasTraceMembers)>
+
+// To run this stand alone uncomment this line.
+// load("<component.componentName>-messages.js");
+
+function trace<message.plainName>(collectionSource, dateStart, dateEnd, dbDestination, mapSiteCollections)
+{
+    let timestampOffset = 500;
+    print("Tracing <message.define.name>");
+    let cursor = collectionSource.find({ $and : [{ "_msgID" : <message.define.name> }, {_timestamp : {$gte : dateStart, $lte: dateEnd }}]});
+    let nCount = cursor.count();
+    let nIndex = 1;
+    cursor.forEach
+    (
+        function(value)
+        {
+            let strSiteCollection = "site_" + value._siteID;
+            delete value["_id"];
+            let timestampFrom = new Date(value._timestamp.getTime());
+            let timestampTo = new Date(value._timestamp.getTime() + 60000); // Allow a minute for processing????
+            let listTrace = [];
+
+            <addExternalKeySnippet(message.externalKey)>
+
+            <message.traceMemberPaths:{traceMember|<selectByCardID(message, "value", traceMember, "collectionSource", "timestampFrom", "timestampTo")>};separator="\n">
+
+            let emptyDoc = { msgID : <message.define.name>, input : [] };
+            if(!mapSiteCollections[strSiteCollection])
+            {
+<if(message.hasCardIdMember)>
+                dbDestination[strSiteCollection].createIndex({_cardID : 1});
+                dbDestination[strSiteCollection].insertOne({_cardID : value.<buildCardIdJsonPath(message)>,  <message.define.name> : emptyDoc });
+                mapSiteCollections[strSiteCollection] = true;
+            }
+            else if(dbDestination[strSiteCollection].find({_cardID : value.<buildCardIdJsonPath(message)>}).count() == 0)
+            {
+                dbDestination[strSiteCollection].insertOne({_cardID : value.<buildCardIdJsonPath(message)>, <message.define.name> : emptyDoc });
+            }
+            else if(dbDestination[strSiteCollection].find({$and : [{_cardID : value.<buildCardIdJsonPath(message)>}, { <message.define.name> : {$exists : true}}]}).count() == 0)
+            {
+                dbDestination[strSiteCollection].update({_cardID : value.<buildCardIdJsonPath(message)>}, { $set : { <message.define.name> : emptyDoc }});
+            }
+            dbDestination[strSiteCollection].update({_cardID : value.<buildCardIdJsonPath(message)>}, { $push : { "<message.define.name>.input" : { in : value, trace : listTrace }}});
+<elseif(message.hasExternalKey)>
+                dbDestination[strSiteCollection].createIndex({_cardID : 1});
+                dbDestination[strSiteCollection].insertOne({_cardID : <message.externalKey.externalKey>,  <message.define.name> : emptyDoc });
+                mapSiteCollections[strSiteCollection] = true;
+            }
+            else if(dbDestination[strSiteCollection].find({_cardID : <message.externalKey.externalKey>}).count() == 0)
+            {
+                dbDestination[strSiteCollection].insertOne({_cardID : <message.externalKey.externalKey>, <message.define.name> : emptyDoc });
+            }
+            else if(dbDestination[strSiteCollection].find({$and : [{_cardID : <message.externalKey.externalKey>}, { <message.define.name> : {$exists : true}}]}).count() == 0)
+            {
+                dbDestination[strSiteCollection].update({_cardID : <message.externalKey.externalKey>}, { $set : { <message.define.name> : emptyDoc }});
+            }
+            dbDestination[strSiteCollection].update({_cardID : <message.externalKey.externalKey>}, { $push : { "<message.define.name>.input" : { in : value, trace : listTrace }}});
+<else>
+                dbDestination[strSiteCollection].createIndex({_key : 1});
+                dbDestination[strSiteCollection].insertOne({_key : <first(message.TraceMemberValuePaths)>,  <message.define.name> : emptyDoc });
+                mapSiteCollections[strSiteCollection] = true;
+            }
+            else if(dbDestination[strSiteCollection].find({_key : <first(message.TraceMemberValuePaths)>}).count() == 0)
+            {
+                dbDestination[strSiteCollection].insertOne({_key : <first(message.TraceMemberValuePaths)>, <message.define.name> : emptyDoc });
+            }
+            else if(dbDestination[strSiteCollection].find({$and : [{_key : <first(message.TraceMemberValuePaths)>}, { <message.define.name> : {$exists : true}}]}).count() == 0)
+            {
+                dbDestination[strSiteCollection].update({_key : <first(message.TraceMemberValuePaths)>}, { $set : { <message.define.name> : emptyDoc }});
+            }
+            dbDestination[strSiteCollection].update({_key : <first(message.TraceMemberValuePaths)>}, { $push : { "<message.define.name>.input" : { in : value, trace : listTrace }}});
+<endif>
+            if(nIndex % 100 == 0)
+            {
+                print("Up to " + nIndex + " of " + nCount);
+            }
+            ++nIndex;
+        }
+    );
+}
+<endif>
+>>
+
+buildCompareMessageJS(message) ::=
+<<
+function compare<message.define.name>(collectionSource, dbDestination)
+{
+    collectionSource.find(
+}
+
+>>
+
+buildPrintCounts(message, coll, query) ::=
+<<
+fnUpdate(<message.define.name>);
+print("<message.define.name> = " + <coll>.find(<query>).count());
+>>
+
+buildComponentMessagesDefinition(component) ::=
+<<
+
+let <component.componentName>_MESSAGE_LIST = [
+    <component.messages:{message|<if(message.hasDefine)><message.define.numericValue><else>0<endif> /*<message.define.name>*/};separator=",\n">
+];
+
+// All received messages
+
+<component.messages:{message|<if(message.hasDefine)> let <message.define.name> = <message.define.numericValue>;<endif>};separator="\n">
+
+// All messages generated in response
+
+<component.uniqueGeneratedMessages:{message|<if(message.hasDefine)> let <message.define.name> = <message.define.numericValue>;<endif>};separator="\n">
+
+function getComponentMessageCounts(collectionFrom, timeFrom, timeTo)
+{
+    let query = { _msgID : 1 };
+    let fnUpdate = function(msg) { fnUpdate(msg); };
+    if(timeFrom)
+    {
+        if(timeTo)
+        {
+            query = { $and : [ query, { _timestamp : { $gte : timeFrom, $lte : timeTo }}]};
+        }
+        else
+        {
+            query = { $and : [ query, { _timestamp : { $gte : timeFrom }}]};
+        }
+        fnUpdate = function(msg) { query.$and[0]._msgID = msg; };
+    }
+    <component.messages:{message|<if(message.hasDefine)><buildPrintCounts(message, "collectionFrom", "query")> <endif>};separator="\n">
+}
+
+function getComponentGeneratedMessageCounts(collectionFrom, timeFrom, timeTo)
+{
+    let query = { _msgID : 1 };
+    let fnUpdate = function(msg) { fnUpdate(msg); };
+    if(timeFrom)
+    {
+        if(timeTo)
+        {
+            query = { $and : [ query, { _timestamp : { $gte : timeFrom, $lte : timeTo }}]};
+        }
+        else
+        {
+            query = { $and : [ query, { _timestamp : { $gte : timeFrom }}]};
+        }
+        fnUpdate = function(msg) { query.$and[0]._msgID = msg; };
+    }
+    <component.generatedMessages:{message|<if(message.hasDefine)><buildPrintCounts(message, "collectionFrom", "query")> <endif>};separator="\n">
+}
+
+>>
+
+
+selectComponentMessages(component) ::=
+<<
+
+buildComponentMessagesDefinition(component)
+
+coll.find
+(
+    { _msgID : {$in : <component.componentName>_MESSAGE_LIST } }
+);
+
+<component.messages:{message|<selectOutMessages(component, message)>};separator="\n">
+>>
+

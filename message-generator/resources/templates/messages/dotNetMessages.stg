@@ -1,0 +1,507 @@
+addEnumValue(value) ::= <%
+<value.name><if(value.value)> = <value.value><endif>
+%>
+
+generateDotNetEnum(schema, enum) ::=
+<<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+using System;
+using System.Text;
+
+namespace Maxgaming.Cougar.Message
+{
+	/// \<summary>
+    /// Cougar <enum.name> Enum.
+    ///
+	/// \</summary>
+
+    public enum <enum.name>
+    {
+        <enum.values:{value|<addEnumValue(value)>};separator=",\n">
+    }
+}
+>>
+
+getDefineName(define) ::=
+<%
+<define.memberName>Length<define.postFix>
+%>
+
+generateDefineDeclare(define) ::=
+<<
+/// \<summary>
+/// Length of <define.memberName>.
+/// \</summary>
+public const int <getDefineName(define)> = <define.value>;
+
+>>
+
+generateConstants(type) ::=
+<<
+#region Constants
+
+<if(type.hasDefine)>
+/// \<summary>
+/// Cougar Post Office Function for <type.define.name>.
+/// \</summary>
+public const ushort PostOfficeFunction = <type.defineId>;
+<endif>
+<type.memberDefines:{define|<generateDefineDeclare(define)>}>
+
+#endregion
+
+
+>>
+
+generateMemberProperty(member) ::=
+<<
+#region <member.strippedName>
+
+[DataMember]
+public <member.cSharpType> <member.strippedName> { get; set; }
+
+#endregion
+>>
+
+generateProperties(type) ::=
+<<
+#region Properties
+<type.members:{member|<generateMemberProperty(member)>};separator="\n">
+#endregion
+>>
+
+addMemberLength(member, length) ::= <%
+<if(member.isDeclaredArray)>
+<if(member.isVariableLengthArray)>
+<if(member.IsString)>
+length += <member.strippedName>.GetLength(<addMemberSizeMember(member)>);
+<else>
+foreach (var item in <member.strippedName>){ <length> += item.GetLength(); }
+<endif>
+<elseif(member.isArray)>
+foreach (var item in <member.strippedName>) { length += item.GetLength(); }
+<else>
+<length> += <member.strippedName>.GetLength(<getDefineName(member.arraySizeDefine)>);
+<endif>
+<elseif(member.hasEnumType)>
+<length> += ((int) <member.strippedName>).GetLength();
+<elseif(member.isBoolean)>
+<length> += sizeof(Int32);
+<else>
+<length> += <member.strippedName>.GetLength();
+<endif>
+%>
+
+addMemberBytes(member, bytes) ::= <%
+<if(member.isDeclaredArray)>
+<if(member.isVariableLengthArray)>
+<if(member.isString)>
+bytes.AddRange(<member.strippedName>.GetBytes(<addMemberSizeMember(member)>));
+<else>
+foreach (var item in <member.strippedName>){ <bytes>.AddRange(item.GetBytes()); }
+<endif>
+<elseif(member.isArray)>
+foreach (var item in <member.strippedName>) { <bytes>.AddRange(item.GetBytes()); }
+<else>
+<bytes>.AddRange(<member.strippedName>.GetBytes(<getDefineName(member.arraySizeDefine)>));
+<endif>
+<elseif(member.hasEnumType)>
+<bytes>.AddRange(((int) <member.strippedName>).GetBytes());
+<elseif(member.isBoolean)>
+<bytes>.AddRange((<member.strippedName> ? 1 : 0).GetBytes());
+<else>
+<bytes>.AddRange(<member.strippedName>.GetBytes());
+<endif>
+%>
+
+getVariableArrayMemberFromBytes(member, bytes, offset, dynamicExtraBytesLength) ::=
+<%
+<if(member.isString)>
+<member.strippedName> = <bytes>.ToString(); <offset> += <member.strippedName>.GetLength(); //this will not compile;
+<elseif(member.hasMessageType)>
+<member.strippedName> = new <member.singleValueCSharpType>[<addMemberSizeMember(member)>]; for (var i = 0; i \< <addMemberSizeMember(member)>; i++){ <member.strippedName>[i] = new <member.singleValueCSharpType>(<bytes>, <offset>, 0); <offset> += <member.strippedName>[i].GetLength(); }
+<else>
+<member.strippedName> = new <member.singleValueCSharpType>[<addMemberSizeMember(member)> - <offset>]; for (var i = 0; i \< <addMemberSizeMember(member)> - <offset>; i++){ <member.strippedName>[i] = <bytes>.<member.cSharpBinaryConversion>(<offset>); <offset> += <member.strippedName>[i].GetLength(); }
+<endif>
+%>
+
+getMemberFromBytes(member, bytes, offset, dynamicExtraBytesLength) ::= <%
+<if(member.isVariableLengthArray)>
+<getVariableArrayMemberFromBytes(member, bytes, offset, dynamicExtraBytesLength)>
+<elseif(member.isDeclaredArray)>
+  <if(member.isArray)>
+    <if(member.hasMessageType)>
+<member.strippedName> = new <member.singleValueCSharpType>[<getDefineName(member.arraySizeDefine)>]; for (var i = 0; i \< <getDefineName(member.arraySizeDefine)>; i++){ <member.strippedName>[i] = new <member.singleValueCSharpType>(<bytes>, <offset>, 0); <offset> += <member.strippedName>[i].GetLength(); }
+    <else>
+<member.strippedName> = new <member.singleValueCSharpType>[<getDefineName(member.arraySizeDefine)>]; for (var i = 0; i \< <getDefineName(member.arraySizeDefine)>; i++){ <member.strippedName>[i] = <if(member.isBoolean)><bytes>.ToInt32(offset) != 0<else><bytes>.<member.cSharpBinaryConversion>(<offset>)<endif>; <offset> += <member.strippedName>[i].GetLength(); }
+    <endif>
+  <else>
+<member.strippedName> = <bytes>.<member.cSharpBinaryConversion>(<offset>, <member.strippedName>Length); <offset> += <member.strippedName>.GetLength(<getDefineName(member.arraySizeDefine)>);
+  <endif>
+<elseif(member.hasEnumType)>
+<member.strippedName> = (<member.cSharpType>)(<bytes>.ToInt32(<offset>)); <offset> += ((int) <member.strippedName>).GetLength();
+<elseif(member.hasMessageType)>
+  <if(member.messageType.hasVariableLengthArrayMember)>
+<member.strippedName> = new <member.cSharpType>(<bytes>, <offset>, <dynamicExtraBytesLength>); <offset> += <member.strippedName>.GetLength();
+  <else>
+<member.strippedName> = new <member.cSharpType>(<bytes>, <offset>, 0); <offset> += <member.strippedName>.GetLength();
+  <endif>
+<elseif(member.isBoolean)>
+<member.strippedName> = <bytes>.ToInt32(offset) != 0; offset += (<member.strippedName> ? 1 : 0).GetLength();
+<else>
+<member.strippedName> = <bytes>.<member.cSharpBinaryConversion>(<offset>); <offset> += <member.strippedName>.GetLength();
+<endif>
+%>
+
+getBytesForVariableArrayMember(type, member) ::=
+<%
+<if(member.IsArray)>foreach (var item in <member.strippedName>) { bytesList.AddRange(item.GetBytes()); }
+<elseif(member.isString)>bytesList.AddRange(<member.strippedName>.GetBytes()); //this will not compile;
+<else>bytesList.AddRange(<member.strippedName>.GetBytes());
+<endif>
+%>
+
+addMemberSizeMember(member) ::=
+<%
+<if(member.hasSizeMember)><member.SizeMember.strippedName><else>bytes.Length<endif>
+%>
+
+setBytesForVariableArrayMember(type, member) ::=
+<%
+<if(member.isDeclaredArray)>
+<if(member.hasMessageType)><member.strippedName> = new <member.singleValueCSharpType>[<addMemberSizeMember(member)>]; for (var i = 0; i \< <addMemberSizeMember(member)>; i++) { <member.strippedName>[i] = new <member.singleValueCSharpType>(bytes, offset, 0);  /* Assume no embedded object has extra bytes. */ offset += <member.strippedName>[i].GetLength(); }
+<elseif(member.isArray)><member.strippedName> = new <member.singleValueCSharpType>[<addMemberSizeMember(member)>]; for (var i = 0; i \< <addMemberSizeMember(member)>; i++) { <member.strippedName>[i] = bytes.<member.cSharpBinaryConversion>(offset); offset += <member.strippedName>[i].GetLength(); }
+<else><member.strippedName> = bytes.<member.cSharpBinaryConversion>(offset, <addMemberSizeMember(member)>); offset += <member.strippedName>.GetLength(<addMemberSizeMember(member)>);
+<endif>
+<elseif(member.isString)><member.strippedName> = bytes.ToString(); offset += <member.strippedName>.GetLength();
+<else><member.strippedName> = bytes.<member.cSharpBinaryConversion>(offset); offset += <member.strippedName>.GetLength();
+<endif>
+%>
+
+addVariableArrayFromExtraBytes(type, member) ::=
+<<
+#region <member.strippedName>WithExtraData
+
+/// \<summary>
+/// This property is a convinence property that gets and sets <member.name> combined with DynamicMessageExtraData properties.
+/// \</summary>
+<if(member.IsString)>
+public String <member.strippedName>WithExtraData
+<else>
+public <member.singleValueCSharpType>[] <member.strippedName>WithExtraData
+<endif>
+{
+    get
+    {
+        var bytesList = new List\<byte>();
+        <getBytesForVariableArrayMember(type, member)>
+        if (DynamicMessageExtraData != null) { bytesList.AddRange(DynamicMessageExtraData); }
+
+        var bytes = bytesList.ToArray();
+        <if(member.isString)>
+        return bytes.ToString(0, bytes.Length);
+        <else>
+        int offset = 0;
+        int i = 0;
+        var value = new List\<<member.singleValueCSharpType>\>();
+        while (bytes.Length - offset > 0)
+        {
+            <if(member.hasMessageType)>
+            value.Add(new <member.singleValueCSharpType>(bytes, offset, 0));  /* Assume no embedded object has extra bytes. */ offset += value[i].GetLength(); i++;
+            <else>
+            value.Add(bytes.<member.cSharpBinaryConversion>(offset)); offset += value[i].GetLength(); i++;
+            <endif>
+        }
+        return value.ToArray();
+        <endif>
+    }
+    set
+    {
+        var bytesList = new List\<byte>();
+        <if(member.isString)>
+        bytesList.AddRange(value.GetBytes());
+        <else>
+        foreach (var item in <member.strippedName>WithExtraData) { bytesList.AddRange(item.GetBytes()); }
+        <endif>
+
+        var bytes = bytesList.ToArray();
+        int offset = 0;
+        <setBytesForVariableArrayMember(type, member)>
+
+        if (offset \< bytes.Length)
+        {
+            DynamicMessageExtraData = bytes.SubArray(offset);
+        }
+        else
+        {
+            DynamicMessageExtraData = null;
+        }
+    }
+}
+
+#endregion
+>>
+
+generateDotNetClass(schema, type) ::=
+<<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Runtime.Serialization;
+
+namespace Maxgaming.Cougar.Message
+{
+	/// \<summary>
+    /// Cougar <type.plainName> Message.
+    ///
+	/// \</summary>
+
+    <if(type.hasDefine)>
+	[CougarMessage(<type.plainName>.PostOfficeFunction)]
+	<endif>
+	[TypeConverter(typeof(CougarMessageTypeConverter\<<type.plainName>\>))]
+	[DataContract]
+    public partial class <type.plainName> : CougarMessage
+    {
+        <generateConstants(type)>
+
+		#region Constructors
+
+		public <type.plainName>()
+		{
+		}
+
+		public <type.plainName>(byte[] fromBytes, int startIndex, int? dynamicExtraBytesLength = null)
+		{
+			SetBytes(fromBytes, startIndex, dynamicExtraBytesLength);
+		}
+
+		#endregion
+
+        <generateProperties(type)>
+
+        <if(type.hasVariableLengthArrayMember)>
+        #region DynamicMessageExtraData
+
+        /// \<summary>
+        /// Dynamic message extra data
+        /// \</summary>
+        [DataMember]
+        public byte[] DynamicMessageExtraData { get; set; }
+
+        #endregion
+
+        <addVariableArrayFromExtraBytes(type, type.variableLengthArrayMember)>
+
+        <endif>
+        #region Methods
+
+        public override int GetLength()
+        {
+            var length = 0;
+
+            <type.members:{member|<addMemberLength(member, "length")>};separator="\n">
+            <if(type.hasVariableLengthArrayMember)>length += DynamicMessageExtraData != null ? DynamicMessageExtraData.Length : 0;<endif>
+
+            return length;
+        }
+
+        public override byte[] GetBytes()
+        {
+            var bytes = new List\<byte>(GetLength());
+
+            <type.members:{member|<addMemberBytes(member, "bytes")>};separator="\n">
+            <if(type.hasVariableLengthArrayMember)>if (DynamicMessageExtraData != null) { bytes.AddRange(DynamicMessageExtraData); }<endif>
+
+            return bytes.ToArray();
+        }
+
+        public override void SetBytes(byte[] bytes, int startIndex, int? dynamicExtraBytesLength = null)
+        {
+            var offset = startIndex;
+
+            <type.members:{member|<getMemberFromBytes(member, "bytes", "offset", "dynamicExtraBytesLength")>};separator="\n">
+            <if(type.hasVariableLengthArrayMember)>
+			if (dynamicExtraBytesLength.HasValue)
+			{
+				DynamicMessageExtraData = bytes.SubArray(offset, dynamicExtraBytesLength.Value);
+			}
+			else
+			{
+				DynamicMessageExtraData = bytes.SubArray(offset);
+			}
+            <endif>
+        }
+
+<if(type.hasDefine)>
+		public override ushort GetPostOfficeFunctionNo()
+		{
+			return <type.plainName>.PostOfficeFunction;
+		}
+<endif>
+
+        #endregion
+    }
+}
+>>
+
+declareBsonSerialisedMember(member) ::=
+<<
+<if(member.HasAdditionalAttribute)>
+[<member.AdditionalAttribute>]
+<else>
+[BsonElement("<member.strippedName>")]
+<endif>
+<if(member.hasMetadata && member.Metadata.HasSerialiser)>
+<endif>
+<if(member.hasMessageType)>
+<if(member.isArray)>
+public List\<<member.singleValueCSharpType>Mongo> <member.strippedName> { get; set; }
+<else>
+public <member.cSharpType>Mongo <member.strippedName> { get; set; }
+<endif>
+<else>
+<if(member.isArray)>
+public List\<<member.singleValueCSharpType>\> <member.strippedName> { get; set; }
+<else>
+public <member.cSharpType> <member.strippedName> { get; set; }
+<endif>
+<endif>
+
+>>
+
+assignMemberToCougarMessage(member)::=
+<%
+<if(member.HasValueConversion)>
+<member.strippedName> = <member.ValueConversion>
+<else>
+<if(member.hasMessageType)>
+<if(member.isArray)>
+<member.strippedName> = mongoType.<member.strippedName>.Select(value => <member.singleValueCSharpType>Mongo.toInterfaceType(value)).ToArray()
+<else>
+<member.strippedName> = <member.cSharpType>Mongo.toInterfaceType(mongoType.<member.strippedName>)
+<endif>
+<else>
+<if(member.isArray)>
+<member.strippedName> = mongoType.<member.strippedName>.ToArray()
+<else>
+<member.strippedName> = mongoType.<member.strippedName>
+<endif>
+<endif>
+<endif>
+%>
+
+generateMongoBaseType(schema) ::=
+<<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+
+namespace CougarMessages.Mongo;
+
+[BsonDiscriminator(RootClass = true)]
+public class MongoBase
+{
+    public ObjectId Id { get; set; }
+
+    [BsonElement("_timestamp")]
+    public string timestamp { get; set; }
+
+    [BsonElement("_msgID")]
+    public int _msgID { get; set; }
+
+    [BsonElement("_msgName")]
+    public string _msgName { get; set; }
+
+    [BsonElement("_siteID")]
+    public string _siteID { get; set; }
+
+    [BsonElement("_cssSiteID")]
+    public string _cssSiteID { get; set; }
+
+    [BsonElement("_priority")]
+    public string _priority { get; set; }
+
+}
+>>
+generateDotNetMongoType(schema, type) ::=
+<<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+using Maxgaming.Cougar.Message;
+
+namespace CougarMessages.Mongo;
+
+<if(type.hasDefine)>
+[BsonDiscriminator("<type.define.name>")]
+<endif>
+<if(type.HasAdditionalAttribute)>
+[<type.AdditionalAttribute>]
+<endif>
+public class <type.plainName>Mongo : MongoBase
+{
+    <if(type.hasDefine)>
+    public const int MsgID = <type.defineId>;
+    <endif>
+    <type.members:{member|<declareBsonSerialisedMember(member)>};separator="\n">
+
+    public static <type.plainName> toInterfaceType(<type.plainName>Mongo mongoType)
+    {
+        return new <type.plainName>
+        {
+            <type.members:{member|<assignMemberToCougarMessage(member)>};separator=",\n">
+        };
+    }
+}
+>>
+
+addMessageDiscriminator(message) ::=
+<<
+<if(message.hasDefine)>
+BsonClassMap.RegisterClassMap\<<message.PlainName>Mongo>();
+BsonSerializer.RegisterDiscriminatorConvention
+(
+    typeof(<message.PlainName>Mongo),
+    new ScalarDiscriminatorConvention("_msgName")
+);
+<endif>
+>>
+
+generateRegisterClassMap(schema) ::=
+<<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Conventions;
+
+namespace CougarMessages.Mongo;
+
+public class RegisterClasses
+{
+    public static void Register()
+    {
+        BsonClassMap.RegisterClassMap\<MongoBase>(cm => {
+            cm.AutoMap();
+            cm.SetIsRootClass(true);
+        });
+        BsonSerializer.RegisterDiscriminatorConvention
+        (
+            typeof(MongoBase),
+            new ScalarDiscriminatorConvention("_msgName")
+        );
+        <schema.messages:{message|<addMessageDiscriminator(message)>};separator="\n">
+    }
+}
+>>

@@ -1,0 +1,478 @@
+import "common.stg"
+
+defineSiteFromMessage(message, msgVar) ::=
+<<
+case <message.define.name>:
+    <if(message.hasSiteIdMember)>
+    return reinterpret_cast\<const <message.name>*>(<msgVar>->GetData())-><buildSiteIdPath(message)>;
+    <elseif(message.hasCssSiteIdMember)>
+    return getSiteIdFromCssSiteId(reinterpret_cast\<const <message.name>*>(<msgVar>->GetData())-><buildCssSiteIdPath(message)>);
+    <else>
+    return 0;
+    <endif>
+>>
+
+defineSiteFromMessageForComponent(component) ::=
+<<
+#if 0
+uint16_t siteIdFromMessage(const CPOMsgEx* pmsgFrom)
+{
+    switch(pmsgFrom->GetFunctionNo())
+    {
+    <component.messages:{message|<if(message.hasDefine)><defineSiteFromMessage(message, "pmsgFrom")><endif>};separator="\n">
+    }
+}
+#endif
+>>
+
+defineMessageHandler(message) ::= <<
+void <component.componentName>Messages::Handle<message.plainName>(const <message.name>& msg, size_t nMsgLength)
+{
+    if(m_listConsumers.size())
+    {
+        std::for_each
+        (
+            m_listConsumers.begin(), m_listConsumers.end(),
+            [msg, this](auto consumer)
+            {
+                std::dynamic_pointer_cast\<<component.componentName>MessageConsumer>(consumer)->Consume<message.plainName>(msg);
+            }
+        );
+    }
+}
+>>
+
+defineMessageConsumer(message) ::= <<
+virtual void Consume<message.plainName>(const <message.name>& /*msg*/, size_t /*nMsgLength*/, MessagePublisherFn_t /*fnPublisher*/)
+{
+}
+>>
+
+defineMessageHandlerCase(message, msgParam) ::= <<
+case <message.define.name>:
+    {
+#ifdef _USING_MONGO
+        mongocxx::pool::entry pclientMongo = m_pmongoPool->acquire();
+        {
+            BsonDocumentPtr_t bsonDoc;
+            CougarMessages::appendMessageToBSON(bsonDoc, (CPOMsgEx&) *<msgParam>, 0);
+            (*pclientMongo)[m_strDatabaseName][m_strCollection].insert_one(bsonDoc->view());
+        }
+#endif
+        const <message.name>* p<message.plainName> = reinterpret_cast\<const <message.name>*>(<msgParam>->GetData());
+        Handle<message.plainName>(*p<message.plainName>, <msgParam>->GetDataLength());
+        return true;
+    }
+>>
+
+defineComponentInterface(component) ::= <<
+
+const char* <component.referenceName> = "<component.componentName>";
+
+static const std::set\<uint16_t> <component.componentName>_MESSAGE_LIST = {
+    <component.messages:{message|<if(message.hasDefine)><message.define.name><else>0<endif>};separator=",\n">
+};
+
+const std::set\<uint16_t>& <component.componentName>Messages::getMessages() const
+{
+    return <component.componentName>_MESSAGE_LIST;
+}
+
+bool <component.componentName>Messages::onHandleMessage(const CPOMsgEx* pmsgConsume)
+{
+    switch(pmsgConsume->GetFunctionNo())
+    {
+        <component.messages:{message|<if(message.hasDefine)><defineMessageHandlerCase(message, "pmsgConsume")><\n><endif>}>
+        default:
+            break;
+    }
+    return false;
+}
+
+const char* <component.componentName>Messages::getHandlerName() const
+{
+    return <component.referenceName>;
+}
+
+<component.messages:{message|<defineMessageHandler(message)><\n>}>
+
+>>
+
+defineMessageConsumerImpl(message) ::= <<
+virtual bool Consume<message.plainName>(const <message.name>& msg)
+{
+    // TODO - add code to consume the message...
+    // return true if handled.
+    std::cout \<\< getHandlerName() \<\< " message to consumer " \<\< "<message.name>" \<\< std::endl;
+    return false;
+}
+>>
+
+
+defineConsumerImpl(component) ::= <<
+#include \<components/<component.componentName>ComponentInterface.h>
+
+const char* <component.referenceName> = "<component.componentName>";
+
+class <component.componentName>MessageConsumer
+    : public <component.componentName>MessageConsumer
+{
+public:
+
+    virtual void setPublisher(MessagePublisherFn_t fnPublisher)
+    {
+        m_fnPublisher = fnPublisher;
+    }
+    virtual bool isCompatibleConsumer(const MessageHandler* pmsgHandler) const
+    {
+        return std::string(getHandlerName()) == std::string(pmsgHandler->getHandlerName());
+    }
+    virtual const char* getHandlerName() const
+    {
+        return <component.referenceName>;
+    }
+
+    <component.messages:{message|<defineMessageConsumerImpl(message)><\n>}>
+
+protected:
+
+    MessagePublisherFn_t m_fnPublisher;
+};
+
+<defineSiteFromMessageForComponent(component)>
+
+>>
+
+defineComponentInterfaces(schema, component) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#include \<components/<component.componentName>ComponentInterface.h>
+#include \<POMsgEx.h>
+#include \<set>
+#ifdef _USING_MONGO
+#include \<mongocxx/client.hpp>
+#endif
+
+<defineComponentInterface(component)>
+
+>>
+
+defineComponentMockImpl(component) ::= <<
+
+<defineConsumerImpl(component)>
+
+bool <component.componentName>ComponentFactory(<component.componentName>MessageConsumerPtr_t& pcomponentImpl)
+{
+    pcomponentImpl = <component.componentName>MessageConsumerPtr_t(new <component.componentName>MessageConsumerImpl(), [](void* pvInstance) { delete pvInstance; });
+    return pcomponentImpl != nullptr;
+}
+
+>>
+
+defineConsumerBuilderHelpers(schema, components) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#include \<JTStandard.h>
+#include \<cougar-consumer-builder.h>
+#include \<boost/filesystem.hpp>
+
+static const std::string BUILDER("buildMessageConsumer");
+static const std::string DELETER("destroyMessageConsumer");
+
+using namespace boost::filesystem;
+
+// ConsumerProvider
+
+ConsumerProvider::ConsumerProvider(const DllHandleScopePtr_t& pdllHandle)
+    : m_fnProvider(nullptr)
+       , m_fnDeleter(nullptr)
+{
+    pdllHandle->getProcedureByName(BUILDER, m_fnProvider);
+    pdllHandle->getProcedureByName(DELETER, m_fnDeleter);
+}
+
+bool ConsumerProvider::isValid() const
+{
+    return m_fnProvider != nullptr
+        &&
+        m_fnDeleter != nullptr;
+}
+
+bool ConsumerProvider::buildConsumer(const std::string& strComponentName, MessageConsumerPtr_t& pmsgConsumer) const
+{
+    MessageConsumer* pmsgConsumerRaw(nullptr);
+    m_fnProvider(strComponentName, pmsgConsumerRaw);
+    if (pmsgConsumerRaw != nullptr)
+    {
+        pmsgConsumer = MessageConsumerPtr_t(pmsgConsumerRaw, m_fnDeleter);
+        return pmsgConsumer.operator bool();
+    }
+    return false;
+}
+
+bool LinkToDynamic(const std::string& strFileName, MessageHandlerMap_t& mapHandlers, DllHandleScopeVtr_t& listDllScopes)
+{
+    if (exists(strFileName))
+    {
+        DllHandleScopePtr_t plibHandle(new DllHandleScope((HMODULE) ::LoadLibrary(strFileName.c_str())));
+        if (plibHandle->isValid())
+        {
+            ConsumerProviderPtr_t pconsumerProvider(new ConsumerProvider(plibHandle));
+            if (pconsumerProvider->isValid())
+            {
+                listDllScopes.push_back(plibHandle);
+                std::for_each
+                (
+                    mapHandlers.begin(), mapHandlers.end(),
+                    [pconsumerProvider](std::pair\<const std::string, MessageHandlerPtr_t>& pairHandler)
+                    {
+                        MessageConsumerPtr_t pmsgConsumer;
+                        if (pconsumerProvider->buildConsumer(pairHandler.first, pmsgConsumer))
+                        {
+                            pairHandler.second->addConsumer(pmsgConsumer);
+                        }
+                    }
+                );
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+>>
+
+defineHandlerBuilderCase(component, handlerName) ::= <<
+case component<component.componentName>:
+    <handlerName> = MessageHandlerPtr_t(static_cast\<MessageHandler*>(new <component.componentName>Messages()));
+    break;
+>>
+
+defineMessageHandlerBuilder(schema, components) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#include \<JTStandard.h>
+#include \<cougar-consumer-builder.h>
+#include \<Components\AllComponents.h>
+
+using namespace deprecated;
+
+typedef std::map\<std::string, ECougarComponent> ComponentNameEnumMap_t;
+typedef ComponentNameEnumMap_t::const_iterator ComponentNameEnumMapConstItr_t;
+
+typedef std::function\<void(MessageHandlerPtr_t&)> MessageHandlerBuilderFn_t;
+typedef std::map\<std::string, MessageHandlerBuilderFn_t> MessageHandlerBuilderMap_t;
+typedef MessageHandlerBuilderMap_t::const_iterator MessageHandlerBuilderConstItr_t;
+
+
+ComponentNameEnumMap_t COMPONENT_MAP;
+void initComponentMap()
+{
+    if (COMPONENT_MAP.empty())
+    {
+        <components:{component|COMPONENT_MAP.insert(std::make_pair(std::string("<component.componentName>"), component<component.componentName>));};separator="\n">
+    }
+}
+
+MessageHandlerBuilderMap_t BUILDER_MAP;
+void initBuilderMap()
+{
+    if (BUILDER_MAP.empty())
+    {
+        <schema.consumers:{component|BUILDER_MAP.insert(std::make_pair(std::string("<component.componentName>"), [](MessageHandlerPtr_t& pmsgHandler){ pmsgHandler = MessageHandlerPtr_t(static_cast\<MessageHandler*>(new <component.componentName>Messages()));\}));};separator="\n">
+    }
+}
+
+bool buildMessageHandler(const std::string& strName, MessageHandlerPtr_t& phandler)
+{
+    initBuilderMap();
+
+    MessageHandlerBuilderConstItr_t itBuilder = BUILDER_MAP.find(strName);
+    phandler = MessageHandlerPtr_t();
+    if(itBuilder != BUILDER_MAP.end())
+    {
+        itBuilder->second(phandler);
+    }
+    return phandler.operator bool();
+}
+
+ECougarComponent getComponentEnum(const std::string& strName)
+{
+    initComponentMap();
+    ComponentNameEnumMapConstItr_t itComponent = COMPONENT_MAP.find(strName);
+    if(itComponent != COMPONENT_MAP.end())
+    {
+        return itComponent->second;
+    }
+    return componentUnknown;
+}
+
+>>
+
+defineMessageHandlerImpl(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#include \<JTStandard.h>
+#include \<message-distributor.h>
+#include \<POMsgEx.h>
+#include \<thread>
+#include \<mutex>
+#include \<future>
+
+using MessageDistributorVtr_t = std::vector\< MessageDistributorPtr_t>;
+
+class MessageDistributorRunnerImpl : public MessageDistributorRunner
+{
+public:
+
+    MessageDistributorRunnerImpl(const MessageDistributorPtr_t& pmsgDistributor)
+        : m_pmsgDistributor(pmsgDistributor)
+    {}
+
+    virtual bool start()
+    {
+        std::future\<void> future = m_promiseEnd.get_future();
+        m_threadReciever = std::thread
+        (
+            [](MessageDistributorRunnerImpl* pThis, std::future\<void> futureEnd)
+            {
+                pThis->run(futureEnd);
+            },
+            this,
+            std::move(future)
+        );
+        return true;
+    }
+
+    virtual void terminate()
+    {
+        m_promiseEnd.set_value();
+        m_threadReciever.join();
+    }
+
+    virtual bool receive()
+    {
+        return m_pmsgDistributor->receive();
+    }
+
+    virtual bool publish(CPOMsgEx& msgPublish)
+    {
+        return m_pmsgDistributor->publish(msgPublish);
+    }
+
+    virtual bool subscribe(std::string& strTopic, MessageProcessFn_t fnProcessMessage)
+    {
+        return m_pmsgDistributor->subscribe(strTopic, fnProcessMessage);
+    }
+
+    virtual bool subscribe(uint16_t usMinTopic, uint16_t usMaxTopic, MessageProcessFn_t fnProcessMessage)
+    {
+        return m_pmsgDistributor->subscribe(usMinTopic, usMaxTopic, fnProcessMessage);
+    }
+
+    virtual bool subscribe(const MessageRangeArr_t& listTopicRanges, MessageProcessFn_t fnProcessMessage)
+    {
+        return m_pmsgDistributor->subscribe(listTopicRanges, fnProcessMessage);
+    }
+
+    virtual bool subscribe(const std::set\<uint16_t>& listTopics, MessageProcessFn_t fnProcessMessage)
+    {
+        return m_pmsgDistributor->subscribe(listTopics, fnProcessMessage);
+    }
+
+    virtual bool subscribe(const MessageWABFilterList_t& listTopics, uint16_t usSiteId, MessageProcessFn_t fnProcessMessage)
+    {
+        return m_pmsgDistributor->subscribe(listTopics, usSiteId, fnProcessMessage);
+    }
+
+
+private:
+
+    void run(std::future\<void>& futureEnd)
+    {
+        using namespace std::chrono_literals;
+        while (futureEnd.wait_for(1ms) == std::future_status::timeout)
+        {
+            m_pmsgDistributor->receive();
+        }
+    }
+
+    std::thread m_threadReciever;
+    std::promise\<void> m_promiseEnd;
+    MessageDistributorPtr_t m_pmsgDistributor;
+};
+
+
+bool MessageHandlerImpl::initialiseHandler
+(
+    MessageDistributorPtr_t& pmsgDistributor
+    , cougar_messages::LoggerPtr_t& plogger
+    , CDatabaseBasePtr_t& pdatabaseCougar
+#ifdef _USING_MONGO
+    , MongoPoolPtr_t& pmongoPool
+    , const std::string& strDatabase
+    , const std::string& strComponentCollection
+#endif
+)
+{
+    m_plogger = plogger;
+    m_pdatabaseCougar = pdatabaseCougar;
+    m_pmsgDistributorRunner = MessageDistributorRunnerPtr_t(new MessageDistributorRunnerImpl(pmsgDistributor));
+#ifdef _USING_MONGO
+    m_pmongoPool =pmongoPool;
+    m_strDatabaseName = strDatabase;
+    m_strCollection = strComponentCollection;
+#endif
+    return true;
+}
+
+void MessageHandlerImpl::subscribeToMessages()
+{
+    m_pmsgDistributorRunner->subscribe(getMessages(), [this](CPOMsgEx* psgReceived) { onHandleMessage(psgReceived); });
+}
+
+bool MessageHandlerImpl::addConsumer(const MessageConsumerPtr_t& pmsgConsumer)
+{
+    if(pmsgConsumer->isCompatibleConsumer(this))
+    {
+        m_listConsumers.push_back(pmsgConsumer);
+        return true;
+    }
+    return false;
+}
+
+bool MessageHandlerImpl::initialiseConsumer()
+{
+    if(m_listConsumers.size())
+    {
+        std::for_each
+        (
+            m_listConsumers.begin(), m_listConsumers.end(),
+            [this](auto consumer)
+            {
+                consumer->setPublisher
+                    (
+                        [this](uint16_t uMsgId, void* pvMsgContent, size_t nMsgSize)
+                        {
+                            CPOMsgEx msgPublish(uMsgId, pvMsgContent, (WORD) nMsgSize, POMF_PRIORITY_NORMAL);
+                            return m_pmsgDistributorRunner->publish(msgPublish);
+                        }
+                    );
+            }
+        );
+        return true;
+    }
+    return false;
+}
+
+bool MessageHandlerImpl::start()
+{
+    return m_pmsgDistributorRunner->start();
+}
+
+>>

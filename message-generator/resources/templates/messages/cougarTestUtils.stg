@@ -1,0 +1,87 @@
+import "common.stg"
+
+compareMember(member) ::= <%
+<if(member.isArray)>
+    <if(member.isVariableLengthArray)>
+        <if(member.hasMessageType)>
+std::find_if(value1.<member.name>, value1.<member.name> + value1.<member.sizeMember.name>, [value2, &size<member.strippedName>](const <member.messageType.name>& valueTest) { return !(valueTest == value2.<member.name>[size<member.strippedName>++]); }) == value1.<member.name> + value1.<member.sizeMember.name>
+        <else>
+std::memcmp(value1.<member.name>, value2.<member.name>, value1.<member.sizeMember.name> * sizeof(<member.singleValueCppType>)) == 0
+        <endif>
+    <else>
+        <if(member.hasMessageType)>
+std::find_if(value1.<member.name>, value1.<member.name> + <member.arraySize>, [value2, &size<member.strippedName>](const <member.messageType.name>& valueTest) { return !(valueTest == value2.<member.name>[size<member.strippedName>++]); }) == value1.<member.name> + <member.arraySize>
+        <else>
+std::memcmp(value1.<member.name>, value2.<member.name>, <member.arraySize> * sizeof(<member.singleValueCppType>)) == 0
+        <endif>
+    <endif>
+<elseif(member.isFiletime)>
+(value1.<member.name>.dwLowDateTime == value2.<member.name>.dwLowDateTime
+    &&
+    value1.<member.name>.dwHighDateTime == value2.<member.name>.dwHighDateTime)
+<elseif(member.hasEnumType)>
+value1.<member.name> == value2.<member.name>
+<elseif(member.isString)>
+    <if(member.isVariableLengthArray)>
+std::strncmp(value1.<member.name>, value2.<member.name>, value1.<member.arraySize>) == 0
+    <else>
+std::strncmp(value1.<member.name>, value2.<member.name>, <member.arraySize>) == 0
+    <endif>
+<else>
+value1.<member.name> == value2.<member.name>
+<endif>
+%>
+
+defineMessageEquivalence(message) ::= <<
+inline bool operator==(const <message.name>& value1, const <message.name>& value2)
+{
+    <message.arrayMembers:{member|size_t size<member.strippedName>(0);<\n>}>
+    return <message.members:{member|<compareMember(member)>};separator=" && \n        ">;
+}
+
+>>
+
+declareCougarMessageOperators(schema) ::= <<
+
+#include \<JTStandard.h\>
+
+<schema.messages:{message|<defineMessageEquivalence(message)>}>
+
+>>
+
+defineEnumToString(enum) ::= <<
+const char* <enum.shortName>ToString(<enum.name> value)
+{
+    switch(value)
+    {
+        <enum.values:{enumValue|case <enumValue.name>: return "<enumValue.name>";};separator="\n">
+        default: return "Unknown";
+    }
+}
+
+>>
+
+defineCougarToStringEnumHelpers(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#include \<JTProtocolEnumHelpers.h\>
+
+<schema.enums:{enum|<defineEnumToString(enum)>}>
+
+>>
+
+declareCougarEnumToStringHelpers(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#pragma once
+
+#include \<JTStandard.h>
+#include \<JTProtocolDefs.h>
+#include \<POPBProtocol.h>
+#include \<JDSProtocol.h>
+
+<schema.enums:{enum|const char* <enum.shortName>ToString(<enum.name> value);};separator="\n">
+
+>>

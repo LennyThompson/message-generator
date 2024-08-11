@@ -1,0 +1,14 @@
+{
+  "MessageConfig":{
+    "Source": [
+      "./schema/TestProtocol.h"
+    ],
+    "DestinationPath": "./generated/test",
+    "MessageLimit": 500,
+    "HelperLimit": 250,
+    "HelperDir": "helpers",
+    "GenerateJava": true,
+    "PackageName": "com.cougar.messages",
+    "AggregateSource": true
+  }
+}

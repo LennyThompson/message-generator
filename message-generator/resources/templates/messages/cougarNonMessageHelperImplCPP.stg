@@ -1,0 +1,103 @@
+import "common.stg"
+import "cougarMessageHelperJSON_CPP.stg"
+
+defineNonMessageImpl(message) ::= <<
+
+std::string get<message.plainName>_JSONTemplate()
+{
+#ifdef _INLINE_JSON_TEMPLATE
+    static std::string TEMPLATE = <generateInlineJSONTemplate(message)>;
+#else
+    static std::string TEMPLATE = "";
+#endif
+    if(TEMPLATE.empty())
+    {
+        std::string strJSONFileName = TEMPLATE_PATH;
+        strJSONFileName += "<message.plainName>";
+        strJSONFileName += JSON_EXTENSION;
+        std::ifstream fstrmTemplate(strJSONFileName);
+        if(fstrmTemplate.is_open())
+        {
+            TEMPLATE = std::string((std::istreambuf_iterator\<char>(fstrmTemplate)), (std::istreambuf_iterator\<char>()));
+        }
+    }
+
+    return TEMPLATE;
+}
+
+std::string get<message.plainName>_JSONUpdateTemplate()
+{
+#ifdef _INLINE_JSON_TEMPLATE
+    static std::string TEMPLATE = <generateInlineJSONUpdateTemplate(message)>;
+#else
+    static std::string TEMPLATE = "";
+#endif
+    if(TEMPLATE.empty())
+    {
+        std::string strJSONFileName = TEMPLATE_PATH;
+        strJSONFileName += "<message.plainName>";
+        strJSONFileName += "_Update";
+        strJSONFileName += JSON_EXTENSION;
+        std::ifstream fstrmTemplate(strJSONFileName);
+        if(fstrmTemplate.is_open())
+        {
+            TEMPLATE = std::string((std::istreambuf_iterator\<char>(fstrmTemplate)), (std::istreambuf_iterator\<char>()));
+        }
+    }
+
+    return TEMPLATE;
+}
+
+std::string get<message.plainName>_RawDataAsJSON(const <message.name>* pMsgData, size_t nVariableArrayLength)
+{
+    char szJSON[10000];
+    std::memset(szJSON, 0, 10000);
+    <message.fileTimeMembers:{member|SYSTEMTIME systime<member.name>;<\n>}>
+    <message.fileTimeMembers:{member|convertFileTimeToSystemTime(pMsgData-><member.name>, systime<member.name>);<\n>}>
+    sprintf
+        (
+            szJSON,
+            get<message.plainName>_JSONTemplate().c_str(),
+            <message.members:{member|<memberAsJSON(message, member, "pMsgData", true, "", "nVariableArrayLength", true)>}; separator = ",\n">
+        );
+    return std::string(szJSON);
+}
+
+cougar_messages::<getMessagePointerTypedef(message)> get<message.plainName>_DirectFromRapidJSON(const rapidjson::Value& jsonFrom)
+{
+    <message.arrayMembers:{member|<arrayFromJSON(message, member, "jsonFrom", "Rapid", true)>}>
+    return cougar_messages::build<message.plainName>(
+        <message.members:{member|<localMemberForBuilder_RapidJSON(member, "jsonFrom")>};separator=",\n">
+    );
+}
+
+#ifdef _USING_MONGO
+
+bool append<message.plainName>_RawDataAsBSON(bsoncxx::builder::basic::sub_document& bsonDoc, const <message.name>* pMsgData, size_t nVariableArrayLength)
+{
+    <message.members:{member|<memberAsBSON(message, member, "pMsgData", true, "", "bsonDoc", "nVariableArrayLength")>}>
+    return true;
+}
+
+bool build<message.plainName>_FromBSON(const bsoncxx::document::view& bsonView, <message.name>& msgData)
+{
+    <message.members:{member|<memberFromBSON(message, member, "msgData", "", "bsonView")>}>
+    return true;
+}
+
+#endif
+
+bool <message.plainName>_valueUpdater(void* pvMsgContent, const rapidjson::Value& valJson, const char* pszName)
+{
+    <message.name>* pmsgRaw = reinterpret_cast\<<message.name>*>(pvMsgContent);
+    <message.members:{member|<directNonMessageMemberUpdateFromRapidJSON(member, "pmsgRaw->", "valJson")>}>
+    return true;
+}
+
+<message.arrayMembers:{member|<defineNonMessageArrayMemberToJSON(message, member)>}>
+<message.arrayMembers:{
+    member|
+<defineNonMessageArrayMemberFromJSON(message, member, "rapidjson::Value", "jsonFrom", "Rapid")>
+<defineArrayMemberFromJSONBody_RapidJSON(member, "jsonFrom")>
+        }>
+>>

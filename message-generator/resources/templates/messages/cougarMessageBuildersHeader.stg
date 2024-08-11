@@ -1,0 +1,83 @@
+import "common.stg"
+
+
+declareMessageBuilders(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#pragma once
+
+#ifdef _TEST_BED_
+#include "std-cougar.h"
+#else
+#include \<JTStandard.h>
+#include "JTProtocolStd.h"
+#endif
+
+#include \<string>
+#include \<array>
+#include \<vector>
+#include \<stdint.h>
+#include \<memory>
+
+// Declare functions to build message instances with a full set of values.
+// Primarily targeting unit testing.
+// Note: This could be made more efficient by adding the instance as a parameter,
+// thereby avoiding the copy constructor.
+
+namespace cougar_messages
+{
+
+    // Declare shared pointer types for all messages.
+
+    <schema.messages:{message|<addDeclareMessageTypedef(message)>};separator="\n">
+
+    // Declare builder methods for all messages.
+
+    <schema.messages:{message|<addDeclareMessageBuilder(message, true)>};separator="\n">
+
+    <schema.messages:{message|<addDeclareMessageCopy(message, true)>};separator="\n">
+}
+
+>>
+
+
+declareUnusedMessageBuilders(schema, messages) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#pragma once
+
+#ifdef _TEST_BED_
+#include "std-cougar.h"
+#else
+#include \<JTStandard.h>
+#include "JTProtocolStd.h"
+#endif
+
+#include \<string>
+#include \<array>
+#include \<vector>
+#include \<stdint.h>
+#include \<memory>
+
+// Declare functions to build message instances with a full set of values.
+// Primarily targeting unit testing.
+// Note: This could be made more efficient by adding the instance as a parameter,
+// thereby avoiding the copy constructor.
+
+namespace cougar_messages
+{
+
+    // Declare shared pointer types for all messages.
+
+    <messages:{message|<addDeclareMessageTypedef(message)>};separator="\n">
+
+    // Declare builder methods for all messages.
+
+    <messages:{message|<addDeclareMessageBuilder(message, true)>};separator="\n">
+
+    <messages:{message|<addDeclareMessageCopy(message, true)>};separator="\n">
+}
+
+>>

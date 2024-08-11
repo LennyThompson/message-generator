@@ -1,0 +1,278 @@
+buildSiteIdPath(message) ::= <%
+<message.siteIdMember:{member|<member.name>};separator=".">
+%>
+
+buildCssSiteIdPath(message) ::= <%
+<message.cssSiteIdMember:{member|<member.name>};separator=".">
+%>
+
+buildCardIdPath(message) ::= <%
+<message.cardIdMember:{member|<member.name>};separator=".">
+%>
+
+buildSiteIdJsonPath(message) ::= <%
+<message.siteIdMember:{member|<member.strippedName>};separator=".">
+%>
+
+buildCssSiteIdJsonPath(message) ::= <%
+<message.cssSiteIdMember:{member|<member.strippedName>};separator=".">
+%>
+
+buildCardIdJsonPath(message) ::= <%
+<message.cardIdMember:{member|<member.strippedName>};separator=".">
+%>
+
+buildJsonPath(path) ::=
+<<
+<path:{member|<member.strippedName>};separator=".">;
+>>
+
+buildTraceMemberJsonPaths(message) ::=
+<<
+<message.traceMemberPaths:{path|<buildJsonPath(path)>}>
+>>
+
+combineMemberInHash(member, append, namespace, dataLength) ::= <%
+<if(member.hasMessageType)>
+<if(member.messageType.isNonMessage)>
+<returnVar> ^= <namespace>hash\<<member.messageType.name>>()(<msgVar>.<member.name><append>);
+<else>
+<returnVar> ^= <member.messageType.name>_Msg::getRawDataHash(reinterpret_cast\<const void*>(&<msgVar>.<member.name><append>), <dataLength>);
+<endif>
+<else>
+<if(member.isFiletime)>
+<returnVar> ^= (<namespace>hash\<uint32_t>()(<msgVar>.<member.name><append>.dwLowDateTime) ^ <namespace>hash\<uint32_t>()(<msgVar>.<member.name><append>.dwHighDateTime));
+<else>
+<if(member.isHashString)>
+    <if(member.isVariableLengthArray && !member.isArrayPointer)>
+<returnVar> ^= <namespace>hash\<<namespace>string>()(&<msgVar>.<member.name><append>);
+    <else>
+<returnVar> ^= <namespace>hash\<<namespace>string>()(<msgVar>.<member.name><append>);
+    <endif>
+<elseif(member.isBoolean)>
+<returnVar> ^= <namespace>hash\<<member.singleValueCppType>>()(<msgVar>.<member.name><append> != 0);
+<else>
+<returnVar> ^= <namespace>hash\<<member.singleValueCppType>>()(<msgVar>.<member.name><append>);
+<endif>
+<endif>
+<endif>
+%>
+
+addMemberToHash(member, msgVar, returnVar, namespace, dataLength, variableArrayLength) ::= <%
+<if(member.isArray)>
+<if(member.isVariableLengthArray)>
+for(size_t nIndex(0); nIndex \< <variableArrayLength>; nIndex++)
+<else>
+for(size_t nIndex(0); nIndex \< <member.arraySize>; nIndex++)
+<endif>
+{
+    <combineMemberInHash(member, "[nIndex]", namespace, dataLength)>
+}
+<else>
+<combineMemberInHash(member, "", namespace, dataLength)>
+<endif>
+%>
+
+declareEnumInterpretter(enum) ::= <<
+std::string <enum.shortName>_Enum(int nEnumValue);
+<enum.name> <enum.shortName>_FromEnumStringValue(const std::string& strEnumValue);
+>>
+
+memberAsFunctionParameter(member) ::= <%
+<member.cppParameterType> <member.shortName>
+%>
+
+getMessagePointerTypedef(message) ::= <%
+<message.name>Ptr_t
+%>
+
+addDeclareMessageBuilder(message, forHeader) ::= <<
+<getMessagePointerTypedef(message)> build<message.plainName>
+(
+<if(message.hasMembers)>
+    <message.members:{member|<memberAsFunctionParameter(member)>};separator = ",\n">
+<endif>
+)<if(forHeader)>;<endif>
+>>
+
+addDeclareMessageCopy(message, forHeader) ::= <<
+<getMessagePointerTypedef(message)> build<message.plainName>FromCopy(const <message.name>* pmsgCopy, size_t nMsgSize)<if(forHeader)>;<endif>
+>>
+addDeclareMessageTypedef(message) ::= <<
+    typedef std::shared_ptr\<<message.name>\> <getMessagePointerTypedef(message)>;
+>>
+
+declareAndInitLocalMember(fromJSONAdapter) ::= <%
+<declareLocalMember(fromJSONAdapter)>
+<declareLocalMemberInit(fromJSONAdapter)>
+%>
+
+declareLocalMember(fromJSONAdapter) ::= <%
+<fromJSONAdapter.type> <fromJSONAdapter.name><fromJSONAdapter.append>
+%>
+
+declareLocalMemberInit(fromJSONAdapter) ::= <%
+<if(fromJSONAdapter.isMultiLineDeclaration)>;<\n><fromJSONAdapter.initialiser><endif>
+%>
+
+localMemberForScanf(fromJSONAdapter) ::= <%
+<fromJSONAdapter.scanfArg>
+%>
+
+localMemberForBuilder_RapidJSON(member, jsonVar) ::= <%
+<if(member.isArray)>
+list<member.strippedName>Values
+<else>
+    <if(member.hasMessageType)>
+        <if(member.messageType.isNonMessage)>
+get<member.messageType.plainName>_DirectFromRapidJSON(<jsonVar>["<member.strippedName>"])
+        <else>
+<member.messageType.name>_Msg::getDirectFromRapidJSON(<jsonVar>["<member.strippedName>"])
+        <endif>
+    <elseif(member.isFiletime)>
+fileTimeFromSystemTimeString(<jsonVar>["<member.strippedName>"].GetString())
+    <elseif(member.enumType)>
+<member.enumType.shortName>_FromEnumStringValue(<jsonVar>["<member.strippedName>"].GetString())
+    <else>
+<jsonVar>["<member.strippedName>"].<member.fromJSONAdapter.rapidJSONGetter>()
+    <endif>
+<endif>
+%>
+
+memberAsRapidJSON(message, member, msgInstance, rapidValue, allocator) ::= <<
+{
+<if(member.isArray)>
+    rapidjson::Value val<member.strippedName>(rapidjson::kArrayType);
+    <if(member.hasMessageType)>
+    std::for_each
+    (
+        <msgInstance>-><member.name>, <msgInstance>-><member.name> + <if(member.isVariableLengthArray)><msgInstance>-><member.sizeMember.name><else><member.arraySize><endif>,
+        [&val<member.strippedName>, &<allocator>](auto value)
+        {
+            rapidjson::Value valObject(kObjectType);
+            <member.messageType.name>_Msg::getRawDataAsRapidJSON(&value, valObject, <allocator>);
+            val<member.strippedName>.PushBack(valObject, <allocator>);
+        }
+    );
+    <else>
+    std::for_each
+    (
+        <msgInstance>-><member.name>, <msgInstance>-><member.name> + <if(member.isVariableLengthArray)><msgInstance>-><member.sizeMember.name><else><member.arraySize><endif>,
+        [&val<member.strippedName>, <allocator>](auto value)
+        {
+            val<member.strippedName>.PushBack(value, <allocator>);
+        }
+    );
+    <endif>
+<elseif(member.hasMessageType)>
+    rapidjson::Value val<member.strippedName>(kObjectType);
+    <member.messageType.name>_Msg::getRawDataAsRapidJSON(&<msgInstance>-><member.name>, valObject, <allocator>);
+<elseif(member.isFiletime)>
+    rapidjson::Value val<member.strippedName>;
+    std::string strTime;
+    fileTimeToSystemTimeString(<msgInstance>-><member.name>, strTime);
+    val<member.strippedName>.SetString(strTime.c_str(), (rapidjson::SizeType) strTime.size(), <allocator>);
+<elseif(member.enumType)>
+    rapidjson::Value val<member.strippedName>;
+    val<member.strippedName>.SetString(<member.enumType.shortName>_Enum(<msgInstance>-><member.name>).c_str());
+<elseif(member.isString)>
+    rapidjson::Value val<member.strippedName>;
+    val<member.strippedName>.SetString(<msgInstance>-><member.name>, (rapidjson::SizeType) std::strlen(<msgInstance>-><member.name>), <allocator>);
+<elseif(member.isBoolean)>
+    rapidjson::Value val<member.strippedName>;
+    val<member.strippedName>.SetBool(<msgInstance>-><member.name>);
+<else>
+    rapidjson::Value val<member.strippedName>(<msgInstance>-><member.name>);
+<endif>
+    <rapidValue>.AddMember("<member.strippedName>", val<member.strippedName>, <allocator>);
+}
+>>
+
+arrayFromJSON(message, member, jsonVar, extraName, testNonMessage) ::= <%
+<if(member.isVariableLengthArray)>
+<if(member.hasMessageType)>
+std::vector\<cougar_messages::<getMessagePointerTypedef(member.messageType)>> list<member.fromJSONAdapter.name>Values;<\n>
+<else>
+std::vector\<<member.cppType>> list<member.fromJSONAdapter.name>Values;<\n>
+<endif>
+<else>
+<if(member.hasMessageType)>
+std::array\<cougar_messages::<getMessagePointerTypedef(member.messageType)>, <member.arraySize>> list<member.fromJSONAdapter.name>Values;<\n>
+<else>
+std::array\<<member.cppType>, <member.arraySize>> list<member.fromJSONAdapter.name>Values;<\n>
+<endif>
+<endif>
+<if(testNonMessage && message.isNonMessage)>
+get<message.plainName>_<member.strippedName>ArrayFrom<extraName>JSON
+<else>
+get<member.strippedName>ArrayFrom<extraName>JSON
+<endif>
+(list<member.fromJSONAdapter.name>Values, <jsonVar>["<member.strippedName>"]);
+%>
+
+outputMessageMember(member) ::= <<
+{
+    "name": "<member.name>",
+    "cppType": "<member.cppType>",
+    "javaType": "<member.javaType>",
+    "type": "<member.originalType>",
+    "size": <member.originalByteSize>,
+    <if(member.isVariableLengthArray)>
+    "fixedSizeArray": false,
+    "cppArrayType": "<member.CppParameterType>"
+    "arraySizeMember": "<member.sizeMember.name>"
+    <elseif(member.isArray)>
+    "fixedSizeArray": true,
+    "cppArrayType": "<member.cppFullType>"
+    "arraySize": "<member.arraySize>",
+    "numericArraySize": <member.numericArraySize>
+    <else>
+    "singleValued": true
+    <endif>
+}
+>>
+
+outputGenerationData(message) ::= <<
+{
+    "_id": "<message.name>",
+    "name": "<message.name>",
+    "memberCount": <message.membersCount>,
+    "hasArrayMember": <if(message.HasArrayMember)>true<else>false<endif>,
+    "hasVariableArrayMember": <if(message.HasVariableArrayMember)>true<else>false<endif>,
+    "isNonMessage": <if(message.isNonMessage)>true<else>false<endif>,
+    "size": <message.messageByteSize>,
+    "members": [
+        <message.members:{member|<outputMessageMember(member)>};separator=",\n">
+    ]
+}
+>>
+
+outputValueAsJson(enumValue) ::= <<
+{
+    "name": "<enumValue.name>",
+    "value": <enumValue.value>
+}
+>>
+
+outputEnumAsJson(enumType) ::= <<
+{
+    "name": <enumType.name>,
+    "values":[
+        <enumType.values:{value|<outputValueAsJson(value)>};separator=",\n">
+    ]
+}
+>>
+
+forwardDeclareMessageHelperClass(message) ::= <%
+class <message.name>_Msg;
+%>
+
+messageSize(message, variableLengthMember, append) ::= <%
+sizeof(<message.name>
+<if(variableLengthMember)>
+) + <if(variableLengthMember.isString)>sizeof(<variableLengthMember.singleValueCppType>) * <append><variableLengthMember.shortName>.size()<else>sizeof(<variableLengthMember.cppType>) * (<append><variableLengthMember.shortName>.size() - 1)<endif>
+<else>
+)
+<endif>
+%>
+

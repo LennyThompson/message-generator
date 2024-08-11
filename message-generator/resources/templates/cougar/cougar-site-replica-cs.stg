@@ -1,0 +1,793 @@
+addIncrementerDefine(detail) ::=
+<<
+<detail.values:{value|<value>};separator="\n">
+>>
+
+generateIdUpdates(mapping) ::=
+<<
+<if(mapping.updateFunctionDetails)>
+DECLARE @Decrement INT;
+DECLARE @Increment BIGINT;
+<if(mapping.hasIncrementerDefine)>
+<mapping.incrementerDefines:{detail|<addIncrementerDefine(detail)>};separator="\n">
+<else>
+SELECT @Decrement = old_id, @Increment = new_id FROM id_mapping WHERE table_name = 'css_site';
+<endif>
+
+INSERT INTO id_mapping(old_id, new_id, table_name, field_name)
+    SELECT
+        <if(mapping.useDistinct)>
+        DISTINCT <mapping.field.name>,
+        <else>
+        <mapping.field.name>,
+        <endif>
+        dbo.update_<mapping.table.name>_<mapping.field.name>(@Decrement, <if(mapping.hasCustomIncrementer)><mapping.customIncrementer.values:{value|<value>}><else>@Increment<endif>, <mapping.field.name>),
+        '<mapping.table.name>',
+        '<mapping.field.name>'
+    FROM <mapping.table.name>
+    WHERE <mapping.field.name> IS NOT NULL;
+
+<endif>
+>>
+
+generateIdMapping(table) ::=
+<<
+<if(table.hasCustomUpdateFunction)>
+<table.mappings:{mapping|<generateIdUpdates(mapping)>};separator="\nGO\n">
+<else>
+INSERT INTO id_mapping(old_id, new_id, table_name, field_name, 'id')
+    SELECT id, update_<table.name>_id(0, @lastNewId, id), '<table.name>', 'id' FROM <table.name>;
+
+<endif>
+>>
+
+addSpecificIdUpdateFunction(mapping) ::=
+<<
+<if(mapping.updateFunctionDetails)>
+IF( EXISTS (SELECT *
+     FROM INFORMATION_SCHEMA.ROUTINES
+     WHERE ROUTINE_SCHEMA = 'dbo'
+     AND  ROUTINE_NAME = 'update_<mapping.table.name>_<mapping.field.name>'))
+BEGIN
+    DROP FUNCTION dbo.update_<mapping.table.name>_<mapping.field.name>;
+END
+GO
+
+CREATE FUNCTION update_<mapping.table.name>_<mapping.field.name>(
+    @old_increment INT,
+    @new_increment BIGINT,
+    @old_id BIGINT
+)
+RETURNS BIGINT
+AS
+BEGIN
+    <mapping.updateFunctionDetails.values:{value|<value>};separator="\n">
+END;
+GO
+<endif>
+>>
+
+addIdUpdateFunction(table) ::=
+<<
+<if(table.hasCustomUpdateFunction)>
+<table.mappings:{mapping|<addSpecificIdUpdateFunction(mapping)>}>
+<else>
+IF( EXISTS (SELECT *
+     FROM INFORMATION_SCHEMA.ROUTINES
+     WHERE ROUTINE_SCHEMA = 'dbo'
+     AND  ROUTINE_NAME = 'update_<table.name>_id'))
+BEGIN
+    DROP FUNCTION dbo.update_<table.name>_id;
+END
+GO
+
+CREATE FUNCTION update_<table.name>_id(
+    @old_increment INT,
+    @new_increment BIGINT,
+    @old_id BIGINT
+)
+RETURNS BIGINT
+AS
+BEGIN
+    RETURN @old_id + @new_increment;
+END;
+GO
+<endif>
+>>
+
+addFieldUpdate(table, fieldMapping) ::=
+<<
+-- Update <fieldMapping.sourceTable>.<fieldMapping.sourceField> in <fieldMapping.fieldName>
+UPDATE <table.name>
+<if(fieldMapping.hasCustomFieldUpdate)>
+<fieldMapping.customFieldUpdate:{updateLine|<updateLine>};separator="\n">
+<else>
+SET <table.name>.<fieldMapping.fieldName> = map.new_id
+    FROM <table.name>
+    INNER JOIN id_mapping map
+    ON map.table_name = '<fieldMapping.sourceTable>'
+    AND map.field_name = '<fieldMapping.sourceField>'
+    AND map.old_id = <table.name>.<fieldMapping.fieldName>;
+<endif>
+>>
+
+generateTableInsertSql(table) ::=
+<<
+
+-- Inserts for **** <table.name> ****
+
+-- Insert into <table.name> new record for <table.fieldMappings:{field|<field.name>};separator=", ">
+INSERT
+INTO <table.name>
+    (
+        <table.fieldMappings:{field|<field.name>};separator=",\n">,
+        <table.fieldWithoutMappings:{field|<field.name>};separator=",\n">
+    )
+    SELECT
+        <table.fieldMappings:{field|map<i>.new_id};separator=",\n">,
+        <table.fieldWithoutMappings:{field|<field.name>};separator=",\n">
+    FROM <table.name>
+        <table.fieldMappings:{field|INNER JOIN id_mapping map<i> ON map<i>.table_name = '<field.sourceTable>' AND map<i>.field_name = '<field.sourceField>' AND map<i>.old_id = <table.name>.<field.fieldName>};separator="\n">
+    WHERE
+        <table.fieldMappings:{field|<table.name>.<field.name> = map<i>.old_id};separator=" AND ">
+
+-- End updates for **** <table.name> ****
+
+>>
+
+generateTableDeleteSql(table) ::=
+<<
+
+-- Deletes for **** <table.name> ****
+
+-- Delete from <table.name> old record for <table.fieldMappings:{field|<field.name>};separator=", ">
+DELETE <table.name> FROM <table.name>
+    <table.fieldMappings:{field|INNER JOIN id_mapping map<i> ON map<i>.table_name = '<field.sourceTable>' AND map<i>.field_name = '<field.sourceField>' AND map<i>.old_id = <table.name>.<field.fieldName>};separator="\n">
+    WHERE
+        <table.fieldMappings:{field|<table.name>.<field.name> = map<i>.old_id};separator=" AND ">
+
+-- End updates for **** <table.name> ****
+
+>>
+
+generateTableUpdateSql(table) ::=
+<<
+
+-- Updates for **** <table.name> ****
+
+<table.fieldMappings:{fieldMapping|<addFieldUpdate(table, fieldMapping)>};separator="\n">
+
+-- End updates for **** <table.name> ****
+
+>>
+
+generateSql(listControlTables) ::=
+<<
+USE cougar;
+
+DECLARE @Debug int;
+SELECT @Debug = 0;
+
+IF (@Debug = 1 AND EXISTS (SELECT *
+                 FROM INFORMATION_SCHEMA.TABLES
+                 WHERE TABLE_SCHEMA = 'dbo'
+                 AND  TABLE_NAME = 'id_mapping'))
+BEGIN
+    DROP TABLE id_mapping;
+END
+
+IF (NOT EXISTS (SELECT *
+                 FROM INFORMATION_SCHEMA.TABLES
+                 WHERE TABLE_SCHEMA = 'dbo'
+                 AND  TABLE_NAME = 'id_mapping'))
+BEGIN
+    CREATE TABLE id_mapping ( id bigint identity(1,1) not null,
+        old_id bigint not null,
+        new_id bigint not null,
+        table_name varchar(50),
+        field_name varchar(50),
+        created datetime not null constraint [DF_id_mapping]  DEFAULT ((getdate())),
+        constraint [PK_id_mapping] primary key clustered
+        (
+            [id] asc
+        ),
+        constraint [AK_id_mapping] unique
+        (
+            [old_id], [new_id], [table_name], [field_name]
+        )
+    );
+END
+GO
+
+IF(EXISTS (SELECT *
+           FROM INFORMATION_SCHEMA.TABLES
+           WHERE TABLE_SCHEMA = 'dbo'
+           AND  TABLE_NAME = 'get_random_bigint_view'))
+BEGIN
+    DROP VIEW get_random_bigint_view
+END
+GO
+
+CREATE VIEW get_random_bigint_view AS SELECT CAST(RAND() * 9223372036854775807 AS BIGINT) as Value
+GO
+
+<listControlTables:{table|<addIdUpdateFunction(table)>}>
+>>
+
+addDelete(delete) ::=
+<<
+-- Delete unknown <delete.targetField.name> ids from <delete.targetTable.name>
+
+DELETE FROM <delete.targetTable.name>
+WHERE <delete.targetTable.name>.<delete.targetField.name> NOT IN
+(
+<if(delete.details)>
+    <delete.details:{value|<value>};separator="\n">
+<else>
+    SELECT new_id FROM id_mapping
+    WHERE table_name = '<delete.sourceTable.name>'
+    AND field_name = '<delete.sourceField.name>'
+<endif>
+);
+>>
+
+generateDelete(mapping) ::=
+<<
+<if(mapping.hasDeleteMapping)>
+<mapping.deleteMappings:{delete|<addDelete(delete)>};separator="\n">
+<endif>
+>>
+
+generateDeleteSql(mappingList) ::=
+<<
+    <mappingList.mappings:{mapping|<generateDelete(mapping)>}>
+>>
+
+generateUpdateSql(schema) ::=
+<<
+    <schema.foreignKeyedTypes:{table|<generateTableInsertSql(table)>}>
+    <schema.nonForeignKeyedTypes:{table|<generateTableUpdateSql(table)>}>
+    <schema.foreignKeyedTypes:{table|<generateTableDeleteSql(table)>}>
+
+    <generateDeleteSql(schema.mappings)>
+>>
+
+selectForType(type) ::=
+<<
+SELECT <type.tableMembers:{member|<type.sqlVarname>.<member.name>};separator=", "> FROM <type.name> <type.sqlVarname>
+>>
+
+addUnloadSql(type) ::=
+<<
+{
+    "tableName": "<type.name>",
+    "sql": "<selectForType(type)>"
+}
+>>
+
+generateUnloadToHostSql(schema) ::=
+<<
+{
+    "tables" :
+    [
+        <schema.mappingReloadTypes:{type|<addUnloadSql(type)>};separator=",\n">,
+        <schema.nonMappingReloadTypes:{type|<addUnloadSql(type)>};separator=",\n">
+    ]
+}
+>>
+
+selectForTypeBySiteByDate(type, unloadAdapter) ::=
+<<
+SELECT <type.tableMembers:{member|<type.sqlVarname>.<member.name>};separator=", "> FROM <type.name> <type.sqlVarname><if(unloadAdapter.hasUnloadClause)> <unloadAdapter.unloadClause><endif>
+>>
+
+addUnloadSqlForSite(type) ::=
+<<
+{
+    "tableName": "<type.name>",
+    "sql": "<selectForTypeBySiteByDate(type, type.unloadAdapter)>",
+    "old_sql": "<type.oldUnloadSql>"
+}
+>>
+
+generateUnloadToSiteSql(schema) ::=
+<<
+{
+    "tables" :
+    [
+        <schema.mappingTypes:{type|<addUnloadSqlForSite(type)>};separator=",\n">,
+        <schema.nonMappingTypes:{type|<addUnloadSqlForSite(type)>};separator=",\n">
+    ]
+}
+>>
+
+generateDeleteFunction(delete) ::=
+<<
+private bool delete<delete.targetTable.camelName><delete.targetField.camelName>()
+{
+    Logger.Info("Cleaning up <delete.targetTable.upperName>.<delete.targetField.upperName>");
+    using (SqlCommand sqlCmd = new SqlCommand(DELETE_<delete.targetTable.upperName>_<delete.targetField.upperName>_SQL, Connection))
+    {
+        try
+        {
+            sqlCmd.ExecuteNonQuery();
+        }
+        catch(SqlException exc)
+        {
+            Logger.Error("SqlException running delete<delete.targetTable.camelName><delete.targetField.camelName> " + exc.Message);
+            return false;
+        }
+    }
+    return true;
+}
+
+>>
+
+generateDeleteFunctions(mapping) ::=
+<<
+<if(mapping.hasDeleteMapping)>
+<mapping.deleteMappings:{delete|<generateDeleteFunction(delete)>};separator="\n">
+<endif>
+>>
+
+generateDeleteFunctionCalls(mapping) ::=
+<<
+<if(mapping.hasDeleteMapping)>
+<mapping.deleteMappings:{delete|delete<delete.targetTable.camelName><delete.targetField.camelName>();};separator="\n">
+<else>
+Logger.Info("No delete mappings defined for <mapping.table.name>.<mapping.field.name>");
+<endif>
+>>
+
+
+generateDeleteSqlString(delete) ::=
+<<
+// Delete unknown <delete.targetField.name> ids from <delete.targetTable.name>
+
+private static string DELETE_<delete.targetTable.upperName>_<delete.targetField.upperName>_SQL = @"DELETE FROM <delete.targetTable.name>
+                                WHERE <delete.targetTable.name>.<delete.targetField.name> NOT IN
+                                (
+                                <if(delete.details)>
+                                    <delete.details:{value|<value>};separator="\n">
+                                <else>
+                                    SELECT new_id FROM id_mapping
+                                    WHERE table_name = '<delete.sourceTable.name>'
+                                    AND field_name = '<delete.sourceField.name>'
+                                <endif>
+                                );";
+>>
+
+generateDeleteSqlStrings(mapping) ::=
+<<
+<if(mapping.hasDeleteMapping)>
+<mapping.deleteMappings:{delete|<generateDeleteSqlString(delete)>};separator="\n">
+<endif>
+>>
+
+addIncrementerDefineSql(detail) ::=
+<<
+<detail.values:{value|<value>};separator="\n">
+>>
+
+generateIdUpdatesSqlString(mapping) ::=
+<<
+private static string GENERATE_IDS = @"DECLARE @Decrement INT;
+                        DECLARE @Increment BIGINT;
+<if(mapping.updateFunctionDetails)>
+                        <if(mapping.hasIncrementerDefine)>
+                        <mapping.incrementerDefines:{detail|<addIncrementerDefineSql(detail)>};separator="\n">
+                        <else>
+                        SELECT @Decrement = old_id, @Increment = new_id FROM id_mapping WHERE table_name = 'css_site';
+                        <endif>
+
+                        INSERT INTO id_mapping(old_id, new_id, table_name, field_name)
+                            SELECT
+                                <if(mapping.useDistinct)>
+                                DISTINCT <mapping.field.name>,
+                                <else>
+                                <mapping.field.name>,
+                                <endif>
+                                dbo.update_<mapping.table.name>_<mapping.field.name>(@Decrement, <if(mapping.hasCustomIncrementer)><mapping.customIncrementer.values:{value|<value>}><else>@Increment<endif>, <mapping.field.name>),
+                                '<mapping.table.name>',
+                                '<mapping.field.name>'
+                            FROM <mapping.table.name>
+                            WHERE <mapping.field.name> IS NOT NULL;";
+
+<else>
+                        SELECT @Increment = 1, DECREMENT = 0;
+                        INSERT INTO id_mapping(old_id, new_id, table_name, field_name, 'id')
+                        SELECT
+                            id,
+                            update_<mapping.table.name>_<mapping.field.name>_id(@Decrement, @Increment, id),
+                            '<mapping.table.name>',
+                            'id'
+                        FROM <mapping.table.name>;";
+<endif>
+>>
+
+generateIdUpdateFunctionSqlString(mapping) ::=
+<<
+<if(mapping.updateFunctionDetails)>
+private static string ID_DROP_FUNCTION_SQL = @"IF( EXISTS (SELECT *
+                                 FROM INFORMATION_SCHEMA.ROUTINES
+                                 WHERE ROUTINE_SCHEMA = 'dbo'
+                                 AND  ROUTINE_NAME = 'update_<mapping.table.name>_<mapping.field.name>'))
+                            BEGIN
+                                DROP FUNCTION dbo.update_<mapping.table.name>_<mapping.field.name>;
+                            END";
+
+private static string ID_FUNCTION_SQL = @"CREATE FUNCTION update_<mapping.table.name>_<mapping.field.name>(
+                                @old_increment INT,
+                                @new_increment BIGINT,
+                                @old_id BIGINT
+                            )
+                            RETURNS BIGINT
+                            AS
+                            BEGIN
+                                <mapping.updateFunctionDetails.values:{value|<value>};separator="\n">
+                            END";
+<endif>
+>>
+
+generateUpdateSqlString(fieldMapping) ::=
+<<
+// Update <fieldMapping.sourceTable.name>.<fieldMapping.sourceField.name> in <fieldMapping.targetTable.name>
+private static string ID_UPDATE_<fieldMapping.targetTable.upperName>_<fieldMapping.targetField.upperName>_SQL = @"UPDATE <fieldMapping.targetTable.name>
+                            <if(fieldMapping.hasCustomFieldUpdate)>
+                            <fieldMapping.customFieldUpdate:{updateLine|<updateLine>};separator="\n">";
+                            <else>
+                            SET <fieldMapping.targetTable.name>.<fieldMapping.targetField.name> = map.new_id
+                                FROM <fieldMapping.targetTable.name>
+                                INNER JOIN id_mapping map
+                                ON map.table_name = '<fieldMapping.sourceTable.name>'
+                                AND map.field_name = '<fieldMapping.sourceField.name>'
+                                AND map.old_id = <fieldMapping.targetTable.name>.<fieldMapping.targetField.name>";
+                            <endif>
+>>
+
+generateUpdate(fieldMapping) ::=
+<<
+Logger.Info("Updating <fieldMapping.targetTable.upperName>.<fieldMapping.targetField.upperName>");
+using(SqlCommand sqlCmd = new SqlCommand(ID_UPDATE_<fieldMapping.targetTable.upperName>_<fieldMapping.targetField.upperName>_SQL, Connection))
+{
+    try
+    {
+        sqlCmd.CommandTimeout = 10000;
+        sqlCmd.ExecuteNonQuery();
+    }
+    catch(SqlException exc)
+    {
+        Logger.Error("SqlException running update <fieldMapping.targetTable.name>.<fieldMapping.targetField.name> " + exc.Message);
+        bReturn = false;
+    }
+}
+
+>>
+
+generateDropKeySql(dropKeyDetails) ::=
+<<
+private static string[] DROP_KEY_SQL = {
+    <dropKeyDetails:{detail|"<first(detail.values)>"};separator=",\n">
+};
+>>
+
+generateAddKeySql(addKeyDetails) ::=
+<<
+private static string[] ADD_KEY_SQL = {
+    <addKeyDetails:{detail|"<first(detail.values)>"};separator=",\n">
+};
+>>
+
+generateMappingClass(mapping, fieldMappings ) ::= <<
+
+using System;
+using System.Data.SqlClient;
+using log4net;
+
+namespace CougarSiteReplicator.Mapping
+{
+    class <mapping.table.camelName><mapping.field.camelName>Mapping
+    {
+        <generateIdUpdatesSqlString(mapping)>
+        <generateIdUpdateFunctionSqlString(mapping)>
+        <fieldMappings:{fieldMapping|<generateUpdateSqlString(fieldMapping)>}>
+        <generateDeleteSqlStrings(mapping)>
+        <generateDropKeySql(mapping.dropKeyDetails)>
+        <generateAddKeySql(mapping.addKeyDetails)>
+
+        public <mapping.table.camelName><mapping.field.camelName>Mapping(SqlConnection sqlConn, ILog logger)
+        {
+            m_sqlConnection = sqlConn;
+            m_logger = logger;
+        }
+
+        public SqlConnection Connection
+        {
+            get => m_sqlConnection;
+        }
+        public ILog Logger
+        {
+            get => m_logger;
+        }
+
+        public bool doCreateFunction(Tools.Config config)
+        {
+            Logger.Info("Adding or updating function update_<mapping.table.name>_<mapping.field.name>");
+            using(SqlCommand sqlCmd = new SqlCommand(ID_DROP_FUNCTION_SQL, Connection))
+            {
+                try
+                {
+                    sqlCmd.ExecuteNonQuery();
+                }
+                catch(SqlException exc)
+                {
+                    Logger.Error("SqlException running doCreateFunction (drop function) " + exc.Message);
+                    return false;
+                }
+            }
+            string strFunctionCmd = ID_FUNCTION_SQL;
+            <if(mapping.updateFunctionDetails.hasCustomValue)>strFunctionCmd = string.Format(strFunctionCmd, config.Mapping.MappingData["Config_<mapping.table.camelName><mapping.field.camelName>_FunctionValue"]);<endif>
+            Logger.Debug("Script: " + strFunctionCmd);
+            using(SqlCommand sqlCmd = new SqlCommand(strFunctionCmd, Connection))
+            {
+                try
+                {
+                    sqlCmd.ExecuteNonQuery();
+                }
+                catch(SqlException exc)
+                {
+                    Logger.Error("SqlException running doCreateFunction (create function) " + exc.Message);
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public bool doGenertateIds(Tools.Config config)
+        {
+            Logger.Info("Generating id mappings for <mapping.table.name>.<mapping.field.name>");
+            string strGenerateCmd = GENERATE_IDS;
+            <if(mapping.incrementerDefineOnly.hasCustomValue)>strGenerateCmd = string.Format(strGenerateCmd, config.Mapping.MappingData["Config_<mapping.table.camelName><mapping.field.camelName>_Incrementer"]);<endif>
+            Logger.Debug("Script: " + strGenerateCmd);
+            using(SqlCommand sqlCmd = new SqlCommand(strGenerateCmd, Connection))
+            {
+                try
+                {
+                    sqlCmd.ExecuteNonQuery();
+                }
+                catch(SqlException exc)
+                {
+                    Logger.Error("<mapping.table.camelName><mapping.field.camelName>: SqlException running doGenertateIds " + exc.Message);
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public bool doIdUpdates()
+        {
+            bool bReturn  = true;
+            foreach(string strDrop in DROP_KEY_SQL)
+            {
+                try
+                {
+                    using (SqlCommand cmdDrop = new SqlCommand(strDrop, Connection))
+                    {
+                        cmdDrop.ExecuteNonQuery();
+                    }
+                }
+                catch(SqlException exc)
+                {
+                    Logger.Error("<mapping.table.camelName>.<mapping.field.camelName>: DROP CONSTRAINT error - " + exc.Message);
+                    return false;
+                }
+            }
+
+            <fieldMappings:{fieldMapping|<generateUpdate(fieldMapping)>}>
+
+            foreach(string strAdd in ADD_KEY_SQL)
+            {
+                try
+                {
+                    using (SqlCommand cmdAdd = new SqlCommand(strAdd, Connection))
+                    {
+                        cmdAdd.ExecuteNonQuery();
+                    }
+                }
+                catch(SqlException exc)
+                {
+                    Logger.Error("<mapping.table.camelName>.<mapping.field.camelName>: ADD CONSTRAINT error - " + exc.Message);
+                    return false;
+                }
+            }
+
+            return bReturn;
+        }
+
+        public bool doDeleteUnkownIds()
+        {
+            <generateDeleteFunctionCalls(mapping)>
+            return true;
+        }
+
+        <generateDeleteFunctions(mapping)>
+
+        private SqlConnection m_sqlConnection;
+        private ILog m_logger;
+        <if(mapping.hasCustomIncrementDetail)>private string m_strIncrement;<endif>
+    }
+}
+>>
+
+addCreateDbFunction(mapping) ::=
+<<
+try
+{
+    <mapping.table.camelName><mapping.field.camelName>Mapping map<mapping.table.name><mapping.field.name> = new <mapping.table.camelName><mapping.field.camelName>Mapping(sqlConn, logger);
+    if(!map<mapping.table.name><mapping.field.name>.doCreateFunction(config))
+    {
+        logger.Error(string.Format("<mapping.table.name><mapping.field.name> id create function creation has failed"));
+        bReturn = false;
+    }
+}
+catch(Exception exc)
+{
+    logger.Error(string.Format("<mapping.table.name><mapping.field.name> - {0}", exc.Message));
+    bReturn = false;
+}
+>>
+
+addCreateIds(mapping) ::=
+<<
+try
+{
+    <mapping.table.camelName><mapping.field.camelName>Mapping map<mapping.table.name><mapping.field.name> = new <mapping.table.camelName><mapping.field.camelName>Mapping(sqlConn, logger);
+    if(!map<mapping.table.name><mapping.field.name>.doGenertateIds(config))
+    {
+        logger.Error(string.Format("<mapping.table.name><mapping.field.name> id generation has failed"));
+        bReturn = false;
+    }
+}
+catch(Exception exc)
+{
+    logger.Error(string.Format("<mapping.table.name><mapping.field.name> - {0}", exc.Message));
+    bReturn = false;
+}
+>>
+
+addUpdateIds(mapping) ::=
+<<
+try
+{
+    <mapping.table.camelName><mapping.field.camelName>Mapping map<mapping.table.name><mapping.field.name> = new <mapping.table.camelName><mapping.field.camelName>Mapping(sqlConn, logger);
+    if(!map<mapping.table.name><mapping.field.name>.doIdUpdates())
+    {
+        logger.Error(string.Format("<mapping.table.name><mapping.field.name> update ids has failed"));
+        bReturn = false;
+    }
+}
+catch(Exception exc)
+{
+    logger.Error(string.Format("<mapping.table.name><mapping.field.name> - {0}", exc.Message));
+    bReturn = false;
+}
+>>
+
+addCleanUp(mapping) ::=
+<<
+try
+{
+    <mapping.table.camelName><mapping.field.camelName>Mapping map<mapping.table.name><mapping.field.name> = new <mapping.table.camelName><mapping.field.camelName>Mapping(sqlConn, logger);
+    if(!map<mapping.table.name><mapping.field.name>.doDeleteUnkownIds())
+    {
+        logger.Error(string.Format("<mapping.table.name><mapping.field.name> clean up has failed"));
+        bReturn = false;
+    }
+}
+catch(Exception exc)
+{
+    logger.Error(string.Format("<mapping.table.name><mapping.field.name> - {0}", exc.Message));
+    bReturn = false;
+}
+>>
+
+generateUpdateController(listMappings) ::=
+<<
+using System;
+using System.Data.SqlClient;
+using log4net;
+
+namespace CougarSiteReplicator.Mapping
+{
+    class UpdateController
+    {
+        private static string DROP_ID_MAPPING = @"IF (EXISTS (SELECT *
+                                                                   FROM INFORMATION_SCHEMA.TABLES
+                                                                   WHERE TABLE_SCHEMA = 'dbo'
+                                                                   AND  TABLE_NAME = 'id_mapping'))
+                                                  BEGIN
+                                                      DROP TABLE id_mapping;
+                                                  END";
+        private static string CREATE_ID_MAPPING = @"IF (NOT EXISTS (SELECT *
+                                                                     FROM INFORMATION_SCHEMA.TABLES
+                                                                     WHERE TABLE_SCHEMA = 'dbo'
+                                                                     AND  TABLE_NAME = 'id_mapping'))
+                                                    BEGIN
+                                                        CREATE TABLE id_mapping ( id bigint identity(1,1) not null,
+                                                            old_id bigint not null,
+                                                            new_id bigint not null,
+                                                            table_name varchar(50),
+                                                            field_name varchar(50),
+                                                            created datetime not null constraint [DF_id_mapping]  DEFAULT ((getdate())),
+                                                            constraint [PK_id_mapping] primary key clustered
+                                                            (
+                                                                [id] asc
+                                                            ),
+                                                            constraint [AK_id_mapping] unique
+                                                            (
+                                                                [old_id], [new_id], [table_name], [field_name]
+                                                            )
+                                                        );
+                                                    END";
+
+        public static bool CreateIdMappingTable(SqlConnection sqlConn, Tools.Config config, ILog logger)
+        {
+            try
+            {
+                logger.Info(string.Format("Creating id_mapping table in {0}", config.Unload.CougarDestination.CougarDb));
+                if(config.Mapping.DropIdMapping)
+                {
+                    logger.Info("Dropping id_mapping table");
+                    using (SqlCommand sqlDrop = new SqlCommand(DROP_ID_MAPPING, sqlConn))
+                    {
+                        sqlDrop.ExecuteNonQuery();
+                    }
+                }
+                using (SqlCommand sqlCreate = new SqlCommand(CREATE_ID_MAPPING, sqlConn))
+                {
+                    sqlCreate.ExecuteNonQuery();
+                }
+                logger.Info("id_mapping table - created");
+            }
+            catch(SqlException exc)
+            {
+                logger.Error(exc.Message);
+                return false;
+            }
+            return true;
+        }
+
+        public static bool CreateDbFunctions(SqlConnection sqlConn, ILog logger, Tools.Config config)
+        {
+            logger.Info(string.Format("Adding update functions in {0}", config.Unload.CougarDestination.CougarDb));
+            bool bReturn = true;
+            <listMappings:{mapping|<addCreateDbFunction(mapping)>};separator="\n">
+            return bReturn;
+        }
+
+        public static bool GenerateNewIds(SqlConnection sqlConn, ILog logger, Tools.Config config)
+        {
+            logger.Info(string.Format("Generating id updates into id_mapping in {0}", config.Unload.CougarDestination.CougarDb));
+            bool bReturn = true;
+            <listMappings:{mapping|<addCreateIds(mapping)>};separator="\n">
+            return bReturn;
+        }
+
+        public static bool UpdateIds(SqlConnection sqlConn, ILog logger, Tools.Config config)
+        {
+            logger.Info(string.Format("Updating mapped ids in {0}", config.Unload.CougarDestination.CougarDb));
+            bool bReturn = true;
+            <listMappings:{mapping|<addUpdateIds(mapping)>};separator="\n">
+            return bReturn;
+        }
+
+        public static bool CleanUp(SqlConnection sqlConn, ILog logger, Tools.Config config)
+        {
+            logger.Info(string.Format("Cleaning up ids not updated in {0}", config.Unload.CougarDestination.CougarDb));
+            bool bReturn = true;
+            <listMappings:{mapping|<addCleanUp(mapping)>};separator="\n">
+            return bReturn;
+        }
+    }
+}
+>>

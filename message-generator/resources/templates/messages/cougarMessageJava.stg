@@ -1,0 +1,232 @@
+
+declareMessageMember(member) ::= <<
+private <member.javaType> <member.name>;
+>>
+
+declareMessageMemberInterface(member) ::= <%
+<member.javaType> get<member.strippedName>();<\n>
+void set<member.strippedName>(<member.javaType> value);<\n>
+%>
+
+defineMessageMemberInterface(member) ::= <<
+public <member.javaType> get<member.strippedName>()
+{
+    return <member.name>;
+}
+public void set<member.strippedName>(<member.javaType> value)
+{
+    <member.name> = value;
+}
+>>
+
+memberToBson(member, testArray, varName) ::= <%
+<if(testArray && member.isArray && !member.isString)>
+Arrays.stream(<varName>).map(memberVal -> <memberToBson(member, false, "memberVal")>).collect(Collectors.toList())
+<else>
+    <if(member.hasMessageType)>
+<varName>.toBson()
+    <elseif(member.hasEnumType)>
+<varName>.toString()
+    <else>
+<varName>
+    <endif>
+<endif>
+%>
+
+memberFromBson(member, docVar, testArray, varName) ::= <%
+<if(testArray && member.isArray && !member.isString)>
+    <if(member.hasMessageType)>
+((ArrayList\<Document>) <docVar>.get("<member.strippedName>")).stream().map(memberVal -> <member.messageType.javaClassName>.fromBsonDocument(memberVal)).toArray(<member.javaType>::new)
+    <elseif(member.hasEnumType)>
+((ArrayList\<Document>) <docVar>.get("<member.strippedName>")).stream().map(memberVal -> <member.enumType.name>.valueOf(memberVal)).toArray(<member.javaType>::new)
+    <else>
+((ArrayList\<Document>) <docVar>.get("<member.strippedName>")).stream().map(memberVal -> memberVal<member.javaTransformFn>).toArray(<member.javaType>::new)
+    <endif>
+<else>
+    <if(member.hasMessageType)>
+<member.messageType.javaClassName>.fromBsonDocument(<member.javaCast><docVar>.<member.javaBsonGetter>("<member.strippedName>"))
+    <elseif(member.hasEnumType)>
+<member.enumType.name>.valueOf(<docVar>.getString("<member.strippedName>"))
+    <else>
+<member.javaCast><docVar>.<member.javaBsonGetter>("<member.strippedName>")<member.javaTransformFn>
+    <endif>
+<endif>
+%>
+
+addAppendToBsonMember(member) ::= <%
+.append("<member.strippedName>", <memberToBson(member, true, member.name)>)
+%>
+
+addFromBsonMember(member, docVar) ::= <%
+<member.name> = <memberFromBson(member, docVar, true, member.name)>;
+%>
+
+defineCougarMessageInterface(schema, message) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+package <schema.packageName>.interfaces;
+
+<if(message.hasMessageTypeMember)>import <schema.packageName>.*;<endif>
+<if(message.hasEnumTypeMember)>import <schema.packageName>.enums.*;<endif>
+<if(message.hasDefine)>
+import <schema.packageName>.defines.*;
+<endif>
+<if(message.hasDateMember || message.hasArrayMember)>import java.util.*;<endif>
+
+public interface <message.javaInterfaceName>
+{
+<if(message.hasDefine)>
+    public enum E<message.name>
+    {
+        ID(CougarDefines.<message.define.name>),
+        ID_VALUE(<message.define.javaDefineValue>),
+        SIZE(0); // sizeof(<message.name>)
+
+        private int m_nValue;
+        E<message.name>(int nValue)
+        {
+            m_nValue = nValue;
+        }
+
+        public int value()
+        {
+            return m_nValue;
+        }
+    }
+<endif>
+    <message.members:{member|<declareMessageMemberInterface(member)>}>
+}
+>>
+
+defineCougarMessagesJava(schema, message) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+package <schema.packageName>;
+
+<if(message.hasEnumTypeMember)>import <schema.packageName>.enums.*;<endif>
+<if(message.hasDateMember || message.hasArrayMember)>import java.util.*;<endif>
+import java.lang.reflect.Type;
+
+import org.bson.Document;
+
+public class <message.javaClassName> implements <message.javaInterfaceName>, JsonDeserializer\<<message.javaInterfaceName>\>
+{
+    private DateTime m_timestamp;
+    private int m_nSiteID;
+    private int m_nCssSiteID;
+    private int m_nPriority;
+    <message.members:{member|<declareMessageMember(member)>};separator="\n">
+
+    public DateTime timestamp()
+    {
+        return m_timestamp;
+    }
+    public int siteID()
+    {
+        return m_nSiteID;
+    }
+    public int cssSiteID()
+    {
+        return m_nCssSiteID;
+    }
+    public int priority()
+    {
+        return m_nPriority;
+    }
+
+    <message.members:{member|<defineMessageMemberInterface(member)>};separator="\n">
+
+    public Document toBson()
+    {
+        Document docBson = new Document("_id", new ObjectId())
+            .append("_msgID", <message.javaInterfaceName>.ID)
+            .append("_msgName", "<message.define.name>")
+            .append("_timestamp", DateTime.now())
+            <message.members:{member|<addAppendToBsonMember(member)>};separator="\n">;
+
+        return docBson;
+    }
+
+    boolean fromBson(Document docBson)
+    {
+        m_timestamp = docBson.getDate("_timestamp");
+        m_nSiteID = docBson.getInteger("_siteID");
+        m_nCssSiteID = docBson.getInteger("_cssSiteID");
+        m_nPriority = docBson.getInteger("_priority");
+        <message.members:{member|<addFromBsonMember(member, "docBson")>};separator="\n">
+        return true;
+    }
+
+    public static <message.javaClassName> fromBsonDocument(Document docBson)
+    {
+<if(!message.isNonMessage)>
+        if(docBson.getInteger("type_id") == <message.javaInterfaceName>.E<message.name>.ID_VALUE.value())
+        {
+<endif>
+            <message.javaClassName> objFromBson = new <message.javaClassName>();
+            objFromBson.fromBson(docBson);
+            return objFromBson;
+<if(!message.isNonMessage)>
+        }
+        return null;
+<endif>
+    }
+
+    @Override
+    public <message.javaInterfaceName> deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException
+    {
+        // TODO implement json deserialiser...
+        return null;
+    }
+
+}
+>>
+
+declareEnumValue(member) ::= <%<member.name>(<member.value>)%>
+defineCougarEnumJava(schema, enum) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+package <schema.packageName>.enums;
+
+public enum <enum.name>
+{
+    <enum.values:{value|<declareEnumValue(value)>};separator=",\n">;
+
+    private int m_nValue;
+    <enum.name>(int nValue)
+    {
+        m_nValue = nValue;
+    }
+
+    public int value()
+    {
+        return m_nValue;
+    }
+}
+>>
+
+declareDefine(define) ::= <%
+<if(define.hasNumericValue)>
+public static int <define.name> = <define.numericValue>;
+<elseif(define.hasExpressionValue)>
+public static int <define.name> = <define.value>;
+<else>
+public static String <define.name> = "<define.value>";
+<endif>
+%>
+
+defineCougarJavaDefines(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+package <schema.packageName>.defines;
+
+public class CougarDefines
+{
+    <schema.javaDefines:{define|<declareDefine(define)>};separator="\n">
+}
+
+>>

@@ -1,0 +1,86 @@
+declarePathParameter(param) ::= <%
+<if(param.isNumeric)>
+<if(param.isList)>
+let _<param.pathName>: number[] = lodash.split(request.params.<param.pathName>, ",").map(numeric -> Number(numeric)).value();
+<else>
+let _<param.pathName>: number = Number(request.params.<param.pathName>);
+<endif>
+<endif>
+%>
+
+declareNumericParameter(param) ::= <%
+<if(param.isList)>
+let _<param.name>: number[] = lodash.split(request.query.<param.name>, ",").map(numeric_<param.name> => Number(numeric_<param.name>)).value();
+<else>
+let _<param.name>: number = Number(request.query.<param.name>);
+<endif>
+%>
+
+addParameterToFunction(param) ::= <%
+<if(param.isQueryParameter)>request.query.<param.name>
+<elseif(param.isExternal)>this.<param.name>
+<else>
+<if(!param.isList && param.sourceIsList)>[<endif><if(param.isNumeric)>_<endif><param.name><if(!param.isList && param.sourceIsList)>]<endif>
+<endif>
+%>
+
+addMethodApi(method) ::= <<
+router.get("/<method.path>",
+    async (request, response, next) =>
+    {
+        try
+        {
+            <if(method.hasPathParameter)><method.pathParameters:{pathParam|<declarePathParameter(pathParam)>};separator="\n"><endif>
+            <method.numericParameters:{param|<declareNumericParameter(param)>};separator="\n">
+            let json: any = await <if(method.source.isInstance)>this.<method.source.instanceName><else><method.source.className><endif>.<method.source.methodName>(<method.parameters:{parameter|<addParameterToFunction(parameter)>};separator=", ">);
+            console.log("response: ", json);
+            response.json(json);
+        }
+        catch(error)
+        {
+            response.status(500)
+                .json(error);
+        }
+    }
+);
+
+>>
+
+buildApiInterface(api) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <api.generateDate>
+
+import express from "express";
+import lodash from "lodash";
+
+<api.sources:{source|import { <source.name> \} from "<source.file>";};separator="\n">
+import { IDboProvider } from "./AllInterfaces"
+
+export class <api.name>Api
+{
+    <api.localMembers:{member|<member.name>: <member.type><if(!member.isExternal)> = new <member.type>()<endif>;};separator="\n">
+    <api.uniqueInstanceSources:{source|<source.instanceName>: <source.className> = new <source.className>();}>
+    constructor(<api.externalLocalMembers:{param|<param.name>: <param.type>};separator=", ">)
+    {
+        <api.externalLocalMembers:{param|this.<param.name> = <param.name>;};separator="\n">
+    }
+
+    public static registerApi(app: express.Application<api.externalLocalMembers:{param|, <param.name>: <param.type>}>): void
+    {
+        let router: express.Router = express.Router();
+        let apiRouter: <api.name>Api = new <api.name>Api(<api.externalLocalMembers:{param|<param.name>};separator=", ">);
+        //IndexRoute
+        apiRouter.create(app, router);
+    }
+
+    create(app: express.Application, router: express.Router)
+    {
+        <api.methods:{method|<addMethodApi(method)>}>
+
+        //use router middleware
+        app.use("/<api.root>", router);
+    }
+
+}
+
+>>

@@ -1,0 +1,14 @@
+import "common.stg"
+
+
+declareCougarEnumHelpers(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#pragma once
+
+#include \<string>
+<schema.enums:{enum|<declareEnumInterpretter(enum)><\n>}>
+
+>>
+

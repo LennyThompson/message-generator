@@ -1,0 +1,44 @@
+import "common.stg"
+
+addEnumValueCase(enumValue) ::= <<
+case <enumValue.value>:
+    return "<enumValue.name>";
+>>
+
+buildEnumInterpretter(enum) ::= <<
+std::string <enum.shortName>_Enum(int nEnumValue)
+{
+    switch(nEnumValue)
+    {
+        <enum.values:{value|<addEnumValueCase(value)><\n>}>
+        default:
+            break;
+    }
+    return "unknown " + std::to_string(nEnumValue); // Unknown enum value???
+}
+
+<enum.name> <enum.shortName>_FromEnumStringValue(const std::string& strEnumValue)
+{
+    <first(enum.values):{value|if(strEnumValue == "<value.name>"){return <value.name>;\}}>
+    <rest(enum.values):{value|else if(strEnumValue == "<value.name>"){return <value.name>;\}<\n>}>
+    <first(enum.values):{value|return <value.name>}>; // Unknown enum value???
+}
+
+>>
+
+defineCougarEnumHelpers(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#ifdef _TEST_BED_
+#include "std-cougar.h"
+#else
+#include \<JTStandard.h>
+#include "JTProtocolStd.h"
+#endif
+#include "<schema.enumHelperHeaderName>"
+#include \<exception>
+
+<schema.enums:{enum|<buildEnumInterpretter(enum)>}>
+>>
+

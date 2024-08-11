@@ -1,0 +1,49 @@
+import "common.stg"
+
+defineUnknownCougarMessage(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#include "cougar-messages.h"
+#include "message-helper.h"
+#include \<boost/thread/mutex.hpp>
+
+typedef std::map\<size_t, IMessageHelperPtr_t> UnknownMessageMap_t;
+typedef UnknownMessageMap_t::iterator UnknownMessageMapItr_t;
+typedef std::pair\<UnknownMessageMapItr_t, bool> UnknownMessageMapInsert_t;
+
+const std::string UnknownCougar_Msg_Name_TEMPLATE = "Unknown Message - %u";
+UnknownCougar_Msg::UnknownCougar_Msg(size_t nMsgId)
+	: m_nMsgId(nMsgId)
+{
+}
+
+#ifdef _INLINE_JSON_TEMPLATE
+const std::string& UnknownCougar_Msg::getJSON_TEMPLATE() const
+{
+	return UnknownCougar_Msg::JSON_TEMPLATE;
+}
+const std::string UnknownCougar_Msg::JSON_TEMPLATE = "{ \"_msg_type\": %u }";
+const std::string& UnknownCougar_Msg::getJSON_UPDATE_TEMPLATE() const
+{
+	return UnknownCougar_Msg::JSON_UPDATE_TEMPLATE;
+}
+const std::string UnknownCougar_Msg::JSON_UPDATE_TEMPLATE = "{  }";
+#endif
+
+UnknownMessageMap_t COUGAR_MESSAGE_MAP;
+boost::mutex COUGAR_MESSAGE_MAP_MUTEX;
+
+const IMessageHelperPtr_t& getUnknownCougarMessage(size_t nMsgId)
+{
+	boost::unique_lock\<boost::mutex> lLock(COUGAR_MESSAGE_MAP_MUTEX);
+
+	UnknownMessageMapItr_t findMsg = COUGAR_MESSAGE_MAP.find(nMsgId);
+	if (findMsg == COUGAR_MESSAGE_MAP.end())
+	{
+		findMsg = COUGAR_MESSAGE_MAP.insert(std::make_pair(nMsgId, IMessageHelperPtr_t(new UnknownCougar_Msg(nMsgId)))).first;
+	}
+	return findMsg->second;
+}
+>>
+

@@ -1,0 +1,186 @@
+addBlock(block, members, message, mapping) ::=
+<<
+<if(block.hasArrayMember)>
+std::for_each
+(
+    pmsg<message.plainName>-><members:{member|<member.name>};separator=".">, pmsg<message.plainName>-><members:{member|<member.name>};separator="."> + pmsg<message.plainName>-><last(members).arraySize>,
+    [mapUpdates](auto value) {
+<else>
+        {
+            IdUpdaterMapCitr itFound = mapUpdates.find("<mapping.table.name>.<mapping.field.name>");
+            if(itFound != mapUpdates.end())
+            {
+                value.<members:{member|<member.name>};separator="."> = (<last(members).type>) itFound->second.getNewID(value.<members:{member|<member.name>};separator=".">);
+            }
+        }
+<endif>
+>>
+
+generateUpdateForField(fieldAdapt, members, message, mapping) ::=
+<<
+<if(!fieldAdapt.hasArrayMember)>
+{
+    IdUpdaterMapCitr itFound = mapUpdates.find("<mapping.table.name>.<mapping.field.name>");
+    if(itFound != mapUpdates.end())
+    {
+        pmsg<message.plainName>-><members:{member|<member.name>};separator="."> = (<last(members).type>) itFound->second.getNewID(pmsg<message.plainName>-><members:{member|<member.name>};separator=".">);
+    }
+}
+<else>
+<fieldAdapt.arrayBlockedMembers:{block|<addBlock(block, block.members, message, mapping)>}>
+    <fieldAdapt.arrayBlockedMembers:{block|<if(block.hasArrayMember)>\}<endif>};separator="\n">
+);
+<endif>
+>>
+
+generateFieldMappings(msgMapping, message) ::=
+<<
+<if(message.hasDefine)>
+case <message.define.name>:
+    {
+        <message.name>* pmsg<message.plainName> = (<message.name>*) pmsgUpdate->GetData();
+        <msgMapping.fieldAdapters:{fieldAdapt|<generateUpdateForField(fieldAdapt, fieldAdapt.members, message, fieldAdapt.mapping)>};separator="\n">
+    }
+    break;
+<endif>
+>>
+
+generateSiteMessageCpp(listMessageUpdates) ::=
+<<
+#include "MongoSiteReplicator.h"
+#include \<JTStandard.h>
+#include \<cougar-messages.h>
+#include \<vector>
+#include \<POMsgEx.h>
+
+using IdUpdaterMapCitr = std::map\<std::string, IdUpdater>::const_iterator;
+
+bool updateMessages(std::vector\<MessageData>& listUpdateMsgs, const std::map\<std::string, IdUpdater>& mapUpdates)
+{
+    std::for_each
+    (
+        listUpdateMsgs.begin(), listUpdateMsgs.end(),
+        [mapUpdates](MessageData& msgData)
+        {
+            CPOMsgExPtr_t& pmsgUpdate = msgData.m_pmsgData;
+            switch(pmsgUpdate->GetFunctionNo())
+            {
+                <listMessageUpdates:{msgMapping|<generateFieldMappings(msgMapping, msgMapping.message)>};separator="\n">
+                default:
+                    break;
+            }
+        }
+    );
+
+    return true;
+}
+>>
+
+addIdsForMapping(mapping) ::=
+<<
+if(strKey == "<mapping.table.name>.<mapping.field.name>")
+{
+    if (itUpdate == mapUpdates.end())
+    {
+        mapUpdates.insert(std::make_pair(strKey, IdUpdater(mapping["old_id"].<mapping.field.bsonGetter>(), mapping["new_id"].<mapping.field.bsonGetter>())));
+    }
+    else
+    {
+        itUpdate->second.addIdMapping(mapping["old_id"].<mapping.field.bsonGetter>(), mapping["new_id"].<mapping.field.bsonGetter>());
+    }
+}
+>>
+
+addValidateMapping(mapping) ::=
+<<
+if(!colFrom.find_one(make_document(kvp("table_name", "<mapping.table.name>"))))
+{
+    std::cout \<\< "Table '<mapping.table.name>' is missing from mapping collection" \<\< std::endl;
+    bReturn = false;
+}
+>>
+
+generateLocalMappingMap(mappings) ::=
+<<
+
+class IdUpdater;
+using UpdateMap_t = std::map\<std::string, IdUpdater>;
+using UpdateMapItr_t = UpdateMap_t::iterator;
+
+class IdUpdater
+{
+public:
+
+    IdUpdater(uint64_t ulOldId, uint64_t ulNewId)
+    {
+        addIdMapping(std::make_pair(ulOldId, ulNewId));
+    }
+
+    void addIdMapping(uint64_t ulOldId, uint64_t ulNewId)
+    {
+        m_mapIds.insert(std::make_pair(ulOldId, ulNewId));
+    }
+
+    uint64_t getNewID(uint64_t ulOldID) const
+    {
+        std::map\<uint64_t, uint64_t>::const_iterator itNew = m_mapIds.find(ulOldID);
+        if(itNew != m_mapIds.end())
+        {
+            return itNew->second;
+        }
+        ulOldID;
+    }
+
+    static bool buildIdUpdateMap(std::map\<std::string, IdUpdater>& mapUpdates, mongocxx::collection& colFrom);
+
+    std::map\<uint64_t, uint64_t> m_mapIds;
+};
+
+bool IdUpdater::buildIdUpdateMap(std::map\<std::string, IdUpdater>& mapUpdates, mongocxx::collection& colFrom)
+{
+    if(validateCollection(mongocxx::collection& colFrom))
+    {
+        auto cursorMapping = colFrom.find(make_document(kvp("table_name", make_document(kvp("$exists", bsoncxx::types::b_bool{ true })))));
+        for (auto mapping : cursorMapping)
+        {
+            std::string strKey = mapping["table_name"].get_utf8().value.to_string();
+            strKey += "." + mapping["field_name"].get_utf8().value.to_string();
+            UpdateMapItr_t itUpdate = mapUpdates.find(strKey);
+            if (mapping["old_id"].type() == bsoncxx::type::k_int64)
+            {
+                if (itUpdate == mapUpdates.end())
+                {
+                    mapUpdates.insert(std::make_pair(strKey, IdUpdater(mapping["old_id"].get_int64(), mapping["new_id"].get_int64())));
+                }
+                else
+                {
+                    itUpdate->second.addIdMapping(mapping["old_id"].get_int64(), mapping["new_id"].get_int64());
+                }
+            }
+            else if (mapping["old_id"].type() == bsoncxx::type::k_int32)
+            {
+                if (itUpdate == mapUpdates.end())
+                {
+                    mapUpdates.insert(std::make_pair(strKey, IdUpdater(mapping["old_id"].get_int32(), mapping["new_id"].get_int32())));
+                }
+                else
+                {
+                    itUpdate->second.addIdMapping(mapping["old_id"].get_int32(), mapping["new_id"].get_int32());
+                }
+
+            }
+        }
+        return !mapUpdates.empty();
+    }
+    return false;
+}
+
+bool IdUpdater::validateCollection(mongocxx::collection& colFrom)
+{
+    bool bReturn(true);
+    <mappings:{mapping|<addValidateMapping(mapping)>};separator="\n">
+    return bReturn;
+}
+
+
+>>

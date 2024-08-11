@@ -1,0 +1,417 @@
+import "common.stg"
+
+declareArrayMemberToJSON(member) ::= <<
+<if(member.isVariableLengthArray)>
+static std::string get<member.strippedName>ArrayAsJSON(const void* pvMsgData, size_t nDataLength);
+<else>
+static std::string get<member.strippedName>ArrayAsJSON(const void* pvMsgData);
+<endif>
+>>
+
+declareArrayMemberFromJSON(member, jsonType, jsonVar, extraName) ::= <<
+<if(member.isVariableLengthArray)>
+<if(member.hasMessageType)>
+static void get<member.strippedName>ArrayFrom<extraName>JSON(std::vector\<cougar_messages::<member.messageType.name>Ptr_t>& listValues, const <jsonType>& <jsonVar>);
+<else>
+static void get<member.strippedName>ArrayFrom<extraName>JSON(std::vector\<<member.cppType>\>& listValues, const <jsonType>& <jsonVar>);
+<endif>
+<else>
+<if(member.hasMessageType)>
+static void get<member.strippedName>ArrayFrom<extraName>JSON(std::array\<cougar_messages::<member.messageType.name>Ptr_t, <member.arraySize>\>& listValues, const <jsonType>& <jsonVar>);
+<else>
+static void get<member.strippedName>ArrayFrom<extraName>JSON(std::array\<<member.cppType>, <member.arraySize>\>& listValues, const <jsonType>& <jsonVar>);
+<endif>
+<endif>
+>>
+
+declareNonMessageArrayMemberToJSON(message, member) ::= <<
+<if(member.isVariableLengthArray)>
+std::string get<message.plainName>_<member.strippedName>ArrayAsJSON(const void* pvMsgData, size_t nVariableArrayLength);
+<else>
+std::string get<message.plainName>_<member.strippedName>ArrayAsJSON(const void* pvMsgData);
+<endif>
+>>
+
+declareNonMessageArrayMemberFromJSON(message, member, jsonType, jsonVar, extraName) ::= <<
+<if(member.isVariableLengthArray)>
+<if(member.hasMessageType)>
+void get<message.plainName>_<member.strippedName>ArrayFrom<extraName>JSON(std::vector\<cougar_messages::<member.messageType.name>Ptr_t\>& listValues, const <jsonType>& <jsonVar>);
+<else>
+void get<message.plainName>_<member.strippedName>ArrayFrom<extraName>JSON(std::vector\<<member.cppType>\>& listValues, const <jsonType>& <jsonVar>);
+<endif>
+<else>
+<if(member.hasMessageType)>
+void get<message.plainName>_<member.strippedName>ArrayFrom<extraName>JSON(std::array\<cougar_messages::<member.messageType.name>Ptr_t, <member.arraySize>\>& listValues, const <jsonType>& <jsonVar>);
+<else>
+void get<message.plainName>_<member.strippedName>ArrayFrom<extraName>JSON(std::array\<<member.cppType>, <member.arraySize>\>& listValues, const <jsonType>& <jsonVar>);
+<endif>
+<endif>
+>>
+
+
+
+declareHelperClass(message) ::= <<
+// Class implementation: <message.name>_Msg
+
+class <message.name>_Msg: public IMessageHelper
+{
+public:
+
+    enum Message
+    {
+<if(message.hasDefine)>
+        ID = <message.define.name>,
+        ID_VALUE = <if(message.hasNumericDefine)><message.defineId><else><message.preprocessorDefineId><endif>,
+<else>
+        ID = -1,
+        ID_VALUE = -1,
+<endif>
+        SIZE = sizeof(<message.name>)
+    };
+
+    static const char* <message.name>_NAME;
+    static const char* <message.name>_ID;
+
+    virtual const char* messageName() const { return <message.name>_NAME; }
+    virtual const char* messageId() const { return <message.name>_ID; }
+<if(message.hasSiteIdMember)>
+    virtual int32_t siteId(const void* pvMsgBase) const;
+    virtual int32_t siteId(const CPOMsgEx& msgBase) const;
+<else>
+    virtual int32_t siteId(const void* /*pvMsgBase*/) const { return -1; }
+    virtual int32_t siteId(const CPOMsgEx& /*msgBase*/) const { return -1; }
+<endif>
+<if(message.hasCssSiteIdMember)>
+    virtual int32_t cssSiteId(const void* pvMsgBase) const;
+    virtual int32_t cssSiteId(const CPOMsgEx& msgBase) const;
+<else>
+    virtual int32_t cssSiteId(const void* /*pvMsgBase*/) const  { return -1; }
+    virtual int32_t cssSiteId(const CPOMsgEx& /*msgBase*/) const { return -1; }
+<endif>
+<if(message.isEmptyMessage)>
+    virtual size_t getHash(const CPOMsgEx& /*msgBase*/) const { return getRawDataHash(nullptr, 0); }
+    static size_t getRawDataHash(const void* /*pvData*/, size_t /*nDataLength*/);
+<else>
+    virtual size_t getHash(const CPOMsgEx& msgBase) const;
+    static size_t getRawDataHash(const void* pvData, size_t nDataLength);
+<endif>
+<if(message.isEmptyMessage)>
+    virtual std::string getAsJSON(const CPOMsgEx& /*msgBase*/, const std::string& /*strJSONTemplate*/, const std::string& /*strTimestamp*/, size_t /*nUID*/) const { return std::string("{}"); }
+    static std::string getRawDataAsJSON(const void* /*pvMsgData*/, const std::string& /*strJSONTemplate*/, size_t /*nVariableArrayLength*/)  { return std::string("{}"); }
+    virtual bool getFromJSON(CPOMsgExPtr_t& /*msgBase*/, const rapidjson::Value& /*jsonFrom*/) const;
+    static cougar_messages::<getMessagePointerTypedef(message)> getDirectFromRapidJSON(const rapidjson::Value& jsonFrom);
+    virtual bool updateMessageFromTemplate(const CPOMsgExPtr_t& /*msgTemplate*/, CPOMsgExPtr_t& /*msgUpdated*/, const rapidjson::Value& /*jsonUpdate*/)   { return false;  }
+<else>
+    virtual std::string getAsJSON(const CPOMsgEx& msgBase, const std::string& strJSONTemplate, const std::string& strTimestamp, size_t nUID = 0) const;
+    static std::string getRawDataAsJSON(const void* pvMsgData, const std::string& strJSONTemplate, size_t nVariableArrayLength = 0);
+    virtual bool getFromJSON(CPOMsgExPtr_t& msgBase, const rapidjson::Value& jsonFrom) const;
+    static cougar_messages::<getMessagePointerTypedef(message)> getDirectFromRapidJSON(const rapidjson::Value& jsonFrom);
+    virtual bool updateMessageFromTemplate(const CPOMsgExPtr_t& msgTemplate, CPOMsgExPtr_t& msgUpdated, const rapidjson::Value& jsonUpdate);
+<endif>
+
+<if(message.hasVariableLengthArrayMember)>
+    virtual size_t messageSize(size_t nVariableArrayLength) const;
+<else>
+    virtual size_t messageSize(size_t nVariableArrayLength = 0) const { nVariableArrayLength; return sizeof(<message.name>); }
+<endif>
+    virtual void initialiseMessageBuffer(MsgBuffer_t& msgBuffer, size_t nVariableArrayLength = 0) const;
+
+#ifdef _INLINE_JSON_TEMPLATE
+    virtual const std::string& getJSON_TEMPLATE() const { return JSON_TEMPLATE; }
+    static const std::string JSON_TEMPLATE;
+    virtual const std::string& getJSON_UPDATE_TEMPLATE() const { return JSON_UPDATE_TEMPLATE; }
+    static const std::string JSON_UPDATE_TEMPLATE;
+#endif
+
+#ifdef _USING_MONGO
+// Serialise messages to mongo BSON document
+    virtual bool appendBSON(bsoncxx::builder::basic::sub_document& bsonDoc, const CPOMsgEx& msgBase, size_t nUID = 0) const;
+    virtual bool appendBSON(bsoncxx::builder::basic::sub_document& bsonDoc, const FILETIME& ftTimeStamp, int nSiteID, int nCssSiteID, int nPriority, const void* pvMsgBase, size_t nUID, size_t nByteSize = 0) const;
+    virtual bool fromBSON(const bsoncxx::document::view& bsonView, CPOMsgExPtr_t& msgTo, FILETIME& ftTimeStamp, int& nSiteID, int& nCssSiteID, int& nPriority) const;
+#endif
+
+public:
+
+#ifdef _USING_MONGO
+    static bool doAppendBSON(bsoncxx::builder::basic::sub_document& bsonDoc, const FILETIME& ftTimeStamp, int nSiteID, int nCssSiteId, int nPriority, const void* pvMsgBase, size_t nUID, size_t nVariableArraySize);
+<if(!message.isEmptyMessage)>
+    static bool doAppendBSONToDocument(bsoncxx::builder::basic::sub_document& bsonDoc, const void* pvMsgBase, size_t nVariableArraySize);
+    static bool doFromBSONDocument(const bsoncxx::document::view& bsonView, <message.name>& msgObject);
+<endif>
+#endif
+
+    <message.arrayMembers:{member|<declareArrayMemberToJSON(member)>}>
+    <message.arrayMembers:{member|<declareArrayMemberFromJSON(member, "rapidjson::Value", "jsonFrom", "Rapid")>}>
+
+    static bool valueUpdater(void* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+
+private:
+
+};
+>>
+
+declareMessageHelperClass(message) ::= <<
+<if(message.hasDefine)>
+<declareHelperClass(message)>
+<else>
+// Functions to convert <message.name> objects to JSON
+
+//struct <message.name>;
+std::string get<message.plainName>_JSONTemplate();
+std::string get<message.plainName>_JSONUpdateTemplate();
+std::string get<message.plainName>_RawDataAsJSON(const <message.name>* pvMsgData, size_t nVariableArrayLength = 0);
+cougar_messages::<getMessagePointerTypedef(message)> get<message.plainName>_DirectFromRapidJSON(const rapidjson::Value& jsonFrom);
+#ifdef _USING_MONGO
+bool append<message.plainName>_RawDataAsBSON(bsoncxx::builder::basic::sub_document& bsonDoc, const <message.name>* pMsgData, size_t nVariableArrayLength = 0);
+bool build<message.plainName>_FromBSON(const bsoncxx::document::view& bsonView, <message.name>& msgData);
+#endif
+bool <message.plainName>_valueUpdater(void* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+<message.arrayMembers:{member|<declareNonMessageArrayMemberToJSON(message, member)>}>
+<message.arrayMembers:{member|<declareNonMessageArrayMemberFromJSON(message, member, "rapidjson::Value", "jsonFrom", "Rapid")>}>
+<endif>
+>>
+
+declareCougarMessageUtils(schema) ::=
+<<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#pragma once
+
+#ifdef _TEST_BED_
+#include "std-cougar.h"
+#else
+#include \<JTStandard.h>
+#include "JTProtocolStd.h"
+#endif
+
+#include "POMsgEx.h"
+#include \<string>
+#include \<stdint.h>
+#include \<array>
+#include \<vector>
+#include "cougar-messages.h"
+#include "message-builder.h"
+#include \<rapidjson/fwd.h>
+
+typedef std::vector\<uint8_t> MsgBuffer_t;
+
+#ifdef _USING_MONGO
+#include \<bsoncxx/builder/basic/document.hpp>
+#include \<bsoncxx/types.hpp>
+bsoncxx::types::b_date convertFileTimeToBsonDate(const FILETIME& fileTime);
+FILETIME convertBsonDateToFileTime(const bsoncxx::types::b_date& bsonDate);
+namespace <schema.schemaNamespace>
+{
+    bool appendBSONToDocument(bsoncxx::builder::basic::sub_document& bsonDoc, const FILETIME& ftTimeStamp, int nPriority, int nSiteID, int nCssSiteID, int nMsgID, const std::string& strMsgName);
+    bool readFromBSONDocument(const bsoncxx::document::view& bsonView, FILETIME& ftTimeStamp, int& nSiteID, int& nCssSiteID, int& nPriority, int& nMsgID, std::string& strMsgName);
+}
+#endif
+
+static const char* TEMPLATE_PATH = "<schema.jsonTemplateDirectory>";
+static const char* JSON_EXTENSION = "<schema.jsonTemplateExtension>";
+
+time_t convertFileTimeToTime_t(const FILETIME& fileTime);
+bool convertFileTimeToSystemTime(const FILETIME& fileTime, SYSTEMTIME& sysTime);
+FILETIME fileTimeFromSystemTimeString(const std::string& strSysTime);
+void fileTimeToSystemTimeString(const FILETIME& ftFrom, std::string& strTime);
+
+#ifdef _TEST_BED_
+void SystemTimeToFileTime(const SYSTEMTIME *pSYSTEMTIME, FILETIME *pFILETIME);
+#endif
+
+bool isUpdateCombine(const rapidjson::Value& valJson);
+bool valueUpdaterInteger(int32_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterUnsignedInteger(uint32_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+#ifdef _MSC_VER
+bool valueUpdaterLong(long* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterUnsignedLong(unsigned long* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+#else
+bool valueUpdaterLong(int32_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterUnsignedLong(uint32_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+#endif
+bool valueUpdaterShortInteger(int16_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterUnsignedShortInteger(uint16_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+#ifdef _MSC_VER
+bool valueUpdaterUnsignedShortInteger(wchar_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+#endif
+bool valueUpdaterLongInteger(int64_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterUnsignedLongInteger(uint64_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterChar(char* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterByte(uint8_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterFloat(void* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterDouble(void* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterString(void* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterFiletime(void* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterBoolean(void* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+
+bool valueUpdaterIntegerArray(int32_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterUnsignedIntegerArray(uint32_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName);
+#ifdef _MSC_VER
+bool valueUpdaterLongArray(long* pvArrayTo, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterUnsignedLongArray(unsigned long* pvArrayTo, const rapidjson::Value& valJson, const char* pszName);
+#else
+bool valueUpdaterLongArray(int32_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterUnsignedLongArray(uint32_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName);
+#endif
+bool valueUpdaterShortIntegerArray(int16_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterUnsignedShortIntegerArray(uint16_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName);
+#ifdef _MSC_VER
+bool valueUpdaterUnsignedShortIntegerArray(wchar_t* pvMsgContent, const rapidjson::Value& valJson, const char* pszName);
+#endif
+bool valueUpdaterLongIntegerArray(int64_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterUnsignedLongIntegerArray(uint64_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterByteArray(uint8_t* pvArrayTo, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterCharArray(char* pvArrayTo, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterFloatArray(float* pvArrayTo, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterDoubleArray(double* pvArrayTo, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterFiletimeArray(FILETIME* pvArrayTo, const rapidjson::Value& valJson, const char* pszName);
+bool valueUpdaterBooleanArray(bool* pvArrayTo, const rapidjson::Value& valJson, const char* pszName);
+
+class IMessageHelper
+{
+public:
+    virtual const char* messageName() const = 0;
+    virtual const char* messageId() const = 0;
+    virtual int32_t siteId(const CPOMsgEx& msgBase) const = 0;
+    virtual size_t getHash(const CPOMsgEx& msgBase) const = 0;
+    virtual std::string getAsJSON(const CPOMsgEx& msgBase, const std::string& strTemplate, const std::string& strTimestamp, size_t nUID = 0) const = 0;
+    virtual bool getFromJSON(CPOMsgExPtr_t& msgBase, const rapidjson::Value& jsonFrom) const = 0;
+    virtual size_t messageSize(size_t nVariableArrayLength = 0) const = 0;
+    virtual void initialiseMessageBuffer(MsgBuffer_t& msgBuffer, size_t nVariableArrayLength = 0) const = 0;
+    virtual bool updateMessageFromTemplate(const CPOMsgExPtr_t& msgTemplate, CPOMsgExPtr_t& msgUpdated, const rapidjson::Value& jsonUpdate) = 0;
+#ifdef _INLINE_JSON_TEMPLATE
+    virtual const std::string& getJSON_TEMPLATE() const = 0;
+    virtual const std::string& getJSON_UPDATE_TEMPLATE() const = 0;
+#endif
+#ifdef _USING_MONGO
+    virtual bool appendBSON(bsoncxx::builder::basic::sub_document& bsonDoc, const CPOMsgEx& msgBase, size_t nUID) const = 0;
+    virtual bool appendBSON(bsoncxx::builder::basic::sub_document& bsonDoc, const FILETIME& ftTimeStamp, int nSiteID, int nCssSiteID, int nPriority, const void* pvMsgBase, size_t nUID, size_t nByteSize) const = 0;
+    virtual bool fromBSON(const bsoncxx::document::view& bsonView, CPOMsgExPtr_t& msgTo, FILETIME& ftTimeStamp, int& nSiteID, int& nCssSiteID, int& nPriority) const = 0;
+#endif
+
+};
+
+void AppendStringToBSON(bsoncxx::builder::basic::sub_document& bsonDoc, const char* pszName, const char* pszValue, size_t nMaxLength);
+
+>>
+
+declareCougarMessageHelpers(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#pragma once
+
+#include "cougar-utils.h"
+
+class UnknownCougar_Msg : public IMessageHelper
+{
+public:
+	enum Message
+	{
+		ID = 65535,
+		ID_VALUE = 65535,
+		SIZE = 0
+	};
+
+	size_t m_nMsgId;
+	static const char* UNKNOWN_MESSAGE_NAME;
+	UnknownCougar_Msg(size_t nMsgId);
+
+	virtual const char* messageName() const
+	{
+		return UNKNOWN_MESSAGE_NAME;
+	}
+
+	virtual const char* messageId() const
+	{
+		return UNKNOWN_MESSAGE_NAME;
+	}
+	virtual int32_t siteId(const CPOMsgEx& /*msgBase*/) const
+	{
+		return 0;
+	}
+	virtual size_t getHash(const CPOMsgEx&/*msgBase*/) const
+	{
+		return std::hash\<std::string>()(messageName());
+	}
+
+	virtual std::string getAsJSON(const CPOMsgEx& /*msgBase*/, const std::string& /*strJSONTemplate*/, const std::string& /*strTimestamp*/, size_t /*nUID*/) const
+	{
+		std::string strReturn(1024, 0);
+		sprintf(const_cast\<char*>(strReturn.c_str()), getJSON_TEMPLATE().c_str(), m_nMsgId);
+		return strReturn;
+	}
+
+    virtual bool getFromJSON(CPOMsgExPtr_t& /*msgBase*/, const rapidjson::Value& /*jsonFrom*/) const
+    {
+        return false;
+    }
+
+	static std::string getRawDataAsJSON(const void* pvMsgData, const std::string& strJSONTemplate, size_t nVariableArrayLength = 0);
+
+	virtual size_t messageSize(size_t /*nVariableArrayLength*/) const
+	{
+		return 0;
+	}
+	virtual void initialiseMessageBuffer(MsgBuffer_t& /*msgBuffer*/, size_t /*nVariableArrayLength*/) const
+	{
+	}
+
+    virtual bool updateMessageFromTemplate(const CPOMsgExPtr_t& /*msgTemplate*/, CPOMsgExPtr_t& /*msgUpdated*/, const rapidjson::Value& /*jsonUpdate*/)
+    {
+        return false;
+    }
+
+#ifdef _USING_MONGO
+    virtual bool appendBSON(bsoncxx::builder::basic::sub_document& /*bsonDoc*/, const CPOMsgEx& /*msgBase*/, size_t /*nUID*/) const { return true; }
+    virtual bool appendBSON(bsoncxx::builder::basic::sub_document& /*bsonDoc*/, const FILETIME& /*ftTimeStamp*/, int /*nSiteID*/, int /*nCssSiteID*/, int /*nPriority*/, const void* /*pvMsgBase*/, size_t /*nUID*/, size_t /*nByteSize*/) const { return true; }
+    virtual bool fromBSON(const bsoncxx::document::view& /*bsonView*/, CPOMsgExPtr_t& /*msgTo*/, FILETIME& /*ftTimeStamp*/, int& /*nSiteID*/, int& /*nCssSiteID*/, int& /*nPriority*/) const { return true;};
+#endif
+
+#ifdef _INLINE_JSON_TEMPLATE
+	virtual const std::string& getJSON_TEMPLATE() const;
+    virtual const std::string& getJSON_UPDATE_TEMPLATE() const;
+	static const std::string JSON_TEMPLATE;
+	static const std::string JSON_UPDATE_TEMPLATE;
+#endif
+};
+
+<schema.messages:{message|<declareMessageHelperClass(message)>}>
+
+>>
+
+declareUnusedCougarMessageHelpers(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#pragma once
+
+#ifdef _TEST_BED_
+#include "std-cougar.h"
+#else
+#include \<JTStandard.h>
+#include "JTProtocolStd.h"
+#endif
+
+#include "POMsgEx.h"
+#include \<string>
+#include \<stdint.h>
+#include \<array>
+#include \<vector>
+#include "cougar-messages.h"
+#include "message-builder.h"
+#include \<rapidjson/fwd.h>
+
+typedef std::vector\<uint8_t> MsgBuffer_t;
+
+#ifdef _USING_MONGO
+#include \<bsoncxx/builder/basic/document.hpp>
+#include \<bsoncxx/types.hpp>
+bsoncxx::types::b_date convertFileTimeToBsonDate(const FILETIME& fileTime);
+FILETIME convertBsonDateToFileTime(const bsoncxx::types::b_date& bsonDate);
+#endif
+
+<schema.unusedMessages:{message|<declareHelperClass(message)>}>
+>>
+

@@ -1,0 +1,35 @@
+{
+  "MessageConfig":{
+    "Source": [
+      "./schema/JTProtocolDefs.h",
+      "./schema/CSS_JTProtocolDefs.h",
+      "./schema/CssPOPBProtocol.h",
+      "./schema/JTProtocolPlatform.h",
+      "./schema/CmProtocol.h",
+      "./schema/JTProtocol.h",
+      "./schema/CSS_JTProtocol.h",
+      "./schema/JDSProtocol.h",
+      "./schema/POPBProtocol.h",
+      "./schema/KenoProtocol.h"
+    ],
+    "Destination": {
+      "Root": "./generated/",
+      "Messages": "cougar-messages/",
+      "Include": "include/",
+      "Helpers": "helpers/"
+    },
+    "MessageLimit": 500,
+    "HelperLimit": 250,
+    "HelperDir": "helpers",
+    "GenerateJava": true,
+    "PackageName": "com.cougar.messages",
+    "AggregateSource": true
+  },
+  "ApiConfig": {
+    "Source": "./schema/cougar-tables-3.xml",
+    "DestinationPath": "./generated/api",
+    "GenerateCpp": true,
+    "CppDestinationPath": "./generated/cpp",
+    "JsonSource": "./generated/api/schema.json"
+  }
+}

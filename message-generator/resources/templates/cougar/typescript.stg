@@ -1,0 +1,763 @@
+
+declareInterfaceMember(member, assignDefault) ::= <%
+<member.typescriptName>: <member.typescriptType><if(assignDefault)> = <member.typescriptDefault><endif>
+%>
+
+declareTableInterfaceMember(member) ::= <%
+<member.name>: <member.rawTypescriptType>
+%>
+
+declareInterfaceReferenceMember(member, assignDefault) ::= <%
+<if(member.isList)>
+<member.typescriptName>: <member.type>[]<if(assignDefault)> = []<endif>
+<else>
+<member.typescriptName><if(assignDefault)>!<endif>: <member.type>
+<endif>
+%>
+
+assignFromInterface(member, interfaceName) ::= <%
+this.<member.typescriptName> = <interfaceName>.<member.typescriptName>;<\n>
+%>
+
+assignFromRecord(type, member, assignToName, recordName, fromJson) ::= <%
+<assignToName>.<member.typescriptName> =
+<if(member.hasTransformFromRaw)>
+<member.transformFromRaw>(<recordName>.<member.name>)
+<elseif(fromJson)>
+<if(member.isNumeric)> Number(<recordName>.<member.name>)<else> <recordName>.<member.name><endif>
+<else>
+<recordName>.<member.name>
+<endif>
+;<\n>
+%>
+
+assignTypeFromRecord(type, assignToName, recordName, fromJson) ::= <<
+<type.tableMembers:{member|<assignFromRecord(type, member, assignToName, recordName, fromJson)>}>
+>>
+
+fillInterfaceReferenceMemberDetail(member, objName, typeNameAppend) ::= <%
+await <member.referencedType.implementationClassName><typeNameAppend>.fill(connector, sqlPool, <member.keys:{key|<objName>.<key.typescriptName>};separator=", ">)
+%>
+
+fillInterfaceReferenceMember(member, objName, typeNameAppend, forMock) ::= <<
+if(<member.keys:{key|<objName>.<key.typescriptName> !== null};separator=" && ">)
+{
+<if(forMock)>
+    let <member.typescriptName> : <member.referencedType.className> | null = <fillInterfaceReferenceMemberDetail(member, objName, typeNameAppend)>;<\n>
+    if(<member.typescriptName>)
+    {
+        <objName>.<member.typescriptName> = <member.typescriptName>;
+    }
+<else>
+    <objName>.<member.typescriptName> = <fillInterfaceReferenceMemberDetail(member, objName, typeNameAppend)>;<\n>
+<endif>
+}
+>>
+
+fillInterfaceExternalMember(type, member, objName, typeNameAppend) ::= <<
+<if(member.isNullable)>
+let local<member.referenceName>: <member.referenceName> | null  = await <member.referencedType.implementationClassName><typeNameAppend>.fillFor<type.className>(connector, sqlPool, <member.referenceMembers:{refMember|<objName>.<refMember.typescriptName>};separator=", ">);
+if(local<member.referenceName>)
+{
+    <objName>.<member.typescriptName> = local<member.referenceName>;
+}
+<else>
+<objName>.<member.typescriptName> = await <member.referencedType.implementationClassName><typeNameAppend>.fillFor<type.className>(connector, sqlPool, <member.referenceMembers:{refMember|<objName>.<refMember.typescriptName>};separator=", ">);
+<endif>
+>>
+
+
+selectQueryBase(type) ::= <<
+export const SELECT_<type.upperName>: string = `select
+                    <type.tableMembers:{member|<member.name>}; separator = ",\n">
+                from <type.name>`;
+>>
+
+assignFromInterfaceReferenceMember(member, interfaceName) ::= <<
+this.<member.referenceName> = <interfaceName>.<member.referenceName>;<\n>
+>>
+
+declareAsParams(listMembers) ::= <%<listMembers:{member|<declareAsParam(member)>}; separator = ", ">%>
+
+declareAsAssociatedParams(listAssoc) ::= <%<listAssoc:{assoc|<declareAsParam(assoc.member)>}; separator = ", ">%>
+
+declareAsParam(member) ::= <%<member.name>?: <member.typescriptType>%>
+
+declareAsListParam(member) ::= <%<declareAsParam(member)>[]%>
+
+declareAsArguments(listMembers) ::= <%<listMembers:{member|<declareAsArgument(member)>}; separator = ", ">%>
+declareAsAssociatedArguments(listAssoc) ::= <%<listAssoc:{assoc|<declareAsArgument(assoc.member)>}; separator = ", ">%>
+
+declareAsArgument(member) ::= <%<member.name>%>
+
+primaryKeysByValue(listMembers) ::= <%
+<listMembers:{member|<keyByValue(member)>}; separator = " + \" ">
+%>
+
+keyByValue(member) ::= <%<member.name> = " + <member.name>%>
+
+selectFieldTemplate(member) ::= <%\<%if(<member.name>){%\>\n\<%=join%\><selectField(member)>\<%join = ' AND '}%\>%>
+
+selectFields(listMembers) ::= <%
+<listMembers:{member|<selectFieldTemplate(member)>}>
+%>
+
+selectAssociatedFields(listAssoc) ::= <%
+<listAssoc:{assoc|<selectFieldTemplate(assoc.member)>}>
+%>
+
+selectField(member) ::= <%
+<if(member.isStringLike)>
+<member.name> = '\<%=<member.name>%\>'
+<else>
+<member.name> = \<%=<member.name>%\>
+<endif>
+%>
+
+lodashTemplateMember(member) ::= <%
+<member.name>: <if(member.isDatetime)>(<member.name> ? <member.name> : new Date()).toISOString().slice(0, 19).replace("T", " ")<else><member.name><endif>
+%>
+
+templateMembers(listMembers) ::= <%
+<listMembers:{member|<lodashTemplateMember(member)>}; separator = ", ">, join: ''
+%>
+
+templateAssociatedMembers(listAssoc) ::= <%
+<listAssoc:{assoc|<lodashTemplateMember(assoc.member)>}; separator = ", ">, join: ''
+%>
+
+templateMember(member) ::= <%<member.name>: <member.name>%>
+
+addMapFromRecordset(type, varFrom, typeNameAppend) ::= <<
+<if(type.hasReferencedTypes)>
+return Promise.all(
+    lodash
+        .map(
+            <varFrom>, async (record: <type.name>) =>
+            {
+                let <type.name>New = new <type.implementationClassName><typeNameAppend>(record);
+                await <type.implementationClassName><typeNameAppend>.fillChildren(connector, sqlPool, <type.name>New);
+                return <type.name>New;
+            }
+        )
+    );
+<else>
+return lodash
+        .map(<varFrom>, (record: <type.name>) => new <type.implementationClassName><typeNameAppend>(record));
+<endif>
+>>
+
+addSimpleTypeMapFromRecordset(type, varFrom, typeNameAppend) ::= <<
+return lodash()
+        .map(<varFrom>, (record: <type.name>) => new Simple<type.implementationClassName><typeNameAppend>(record));
+>>
+
+declareFillForParentReference(type, parentRef) ::= <<
+public static getQueryFor<parentRef.referencedType.nameCamelCase>(<parentRef.referenceMembers:{refMember|<declareAsParam(refMember)>};separator=", ">): string
+{
+    let template: any = lodash.template(SELECT_<type.upperName>
+            + ` where <parentRef.referenceMembers:{refMember|<selectField(refMember)>};separator=" and ">`);
+    return template({<parentRef.referenceMembers:{refMember|<templateMember(refMember)>};separator=", ">});
+}
+
+
+public static async fillFor<parentRef.referencedType.nameCamelCase>(connector: SqlConnector, sqlPool: any, <parentRef.referenceMembers:{refMember|<declareAsParam(refMember)>};separator=", ">): <if(parentRef.isListReference)>Promise\<<type.interfaceName>[]><else>Promise\<<type.interfaceName><if(parentRef.isNullable)> | null<endif>\><endif>
+{
+    let query: string = <type.implementationClassName>.getQueryFor<parentRef.referencedType.nameCamelCase>(<parentRef.referenceMembers:{refMember|<declareAsArgument(refMember)>};separator=", ">);
+    let results = await connector.query(sqlPool, query);
+<if(parentRef.isListReference)>
+    <addMapFromRecordset(type, "results.recordset", "")>
+<else>
+    <if(parentRef.isNullable)>
+    if(results.recordset[0])
+    {
+        return new <type.implementationClassName>(results.recordset[0]);
+    }
+    return null;
+    <else>
+    return new <type.implementationClassName>(results.recordset[0]);
+    <endif>
+<endif>
+}
+>>
+
+testMemberClauseForMock(member) ::= <%
+<if(member.isNumeric)>Number(value.<member.name>)<else>value.<member.name><endif> === <member.name>
+%>
+declareFillForMockParentReference(type, parentRef) ::= <<
+public static async fillFor<parentRef.referencedType.nameCamelCase>(connector: SqlConnector, sqlPool: any, <parentRef.referenceMembers:{refMember|<declareAsParam(refMember)>};separator=", ">): <if(parentRef.isListReference)>Promise\<<type.interfaceName>[]><else>Promise\<<type.interfaceName>\><endif>
+{
+    let results: <type.name>[] = await lodash
+                        .filter(MOCK_DB.schema.<type.name>, (value: <type.name>) => <parentRef.referenceMembers:{refMember|<testMemberClauseForMock(refMember)>};separator=" && ">);
+<if(parentRef.isListReference)>
+    <addMapFromRecordset(type, "results", "_Mock")>
+<else>
+    return new <type.implementationClassName>_Mock(results[0]);
+<endif>
+}
+>>
+
+declareSelectListMember(type, member, selectList, forSimpleType) ::= <<
+public static getQuery<member.typescriptName>List(<declareAsListParam(member)><if(member.hasSelectListMembers)>, <declareAsAssociatedParams(selectList.associated)><endif>): string
+{
+    let template: any = lodash.template(SELECT_<type.upperName>
+            + ` \<%if(<member.name>){%>where
+                <member.name> in (<if(member.isStringLike)>\'<endif>\<%= _(<member.name>).join('<if(member.isStringLike)>","<else>,<endif>')%><if(member.isStringLike)>\'<endif>)
+                <if(member.hasSelectListMembers)> AND <selectAssociatedFields(selectList.associated)><endif>
+            \<%\}%>`);
+    let query: string = template({<templateMember(member)><if(member.hasSelectListMembers)>, <templateAssociatedMembers(selectList.associated)><endif>});
+    query = query.replace(/"/g, '\'');
+    return query;
+}
+
+
+public static async fill<member.typescriptName>List(connector: SqlConnector, sqlPool: any, <declareAsListParam(member)><if(member.hasSelectListMembers)>, <declareAsAssociatedParams(selectList.associated)><endif>): Promise\<<if(forSimpleType)>Simple<endif><type.interfaceName>[]>
+{
+    let query: string = <if(forSimpleType)>Simple<endif><type.implementationClassName>.getQuery<member.typescriptName>List(<declareAsArgument(member)><if(member.hasSelectListMembers)>, <declareAsAssociatedArguments(selectList.associated)><endif>);
+    let results = await connector.query(sqlPool, query);
+<if(forSimpleType)>
+    <addSimpleTypeMapFromRecordset(type, "results.recordset", "")>
+<else>
+    <addMapFromRecordset(type, "results.recordset", "")>
+<endif>
+}
+>>
+
+declareMockSelectListMember(type, member, selectList, forSimpleType) ::= <<
+
+public static async fill<member.typescriptName>List(connector: SqlConnector, sqlPool: any, <declareAsListParam(member)><if(member.hasSelectListMembers)>, <declareAsAssociatedParams(selectList.associated)><endif>): Promise\<<if(forSimpleType)>Simple<endif><type.interfaceName>[]>
+{
+    let results = await lodash
+        .filter(MOCK_DB.schema.<type.name>, (value: <type.name>) =>
+            {
+                if(lodash.find(<member.name>, innerValue => innerValue === <if(member.isNumeric)>Number(value.<member.name>)<else>value.<member.name><endif>))
+                {
+                    return true;
+                }
+                return false;
+            }
+        );
+
+<if(forSimpleType)>
+    <addSimpleTypeMapFromRecordset(type, "results", "_Mock")>
+<else>
+    <addMapFromRecordset(type, "results", "_Mock")>
+<endif>
+}
+>>
+
+declareTypescriptInterfaces(type) ::= <<
+export interface <type.name>
+{
+    <type.tableMembers:{member|<declareTableInterfaceMember(member)>};separator=";\n">;
+}
+
+<if(type.buildSimpleType)>
+export interface Simple<type.interfaceName>
+{
+    <type.tableMembers:{member|<declareInterfaceMember(member, false)>};separator=";\n">;<\n>
+}
+
+export interface <type.interfaceName> extends Simple<type.interfaceName>
+{
+    <type.foreignKeyMembers:{member|<declareInterfaceReferenceMember(member, false)>;};separator="\n">
+    <type.externalReferenceMembers:{member|<declareInterfaceReferenceMember(member, false)>;};separator="\n">
+}
+<else>
+export interface <type.interfaceName>
+{
+    <type.tableMembers:{member|<declareInterfaceMember(member, false)>;};separator="\n">
+    <type.foreignKeyMembers:{member|<declareInterfaceReferenceMember(member, false)>;};separator="\n">
+    <type.externalReferenceMembers:{member|<declareInterfaceReferenceMember(member, false)>;};separator="\n">
+}
+<endif>
+
+>>
+
+declareTypescriptInterface(type) ::= <<
+
+<selectQueryBase(type)>
+
+<if(type.buildSimpleType)>
+export class Simple<type.implementationClassName> implements Simple<type.interfaceName>
+{
+    <type.tableMembers:{member|<declareInterfaceMember(member, true)>};separator=";\n">;
+
+    constructor(from: <type.name>)
+    {
+        Simple<type.implementationClassName>.assignFromRecord(this, from);
+    }
+
+<if(type.hasPrimaryKey)>
+    public static getQuery(<declareAsParams(type.primaryKeyMembers)>): string
+    {
+        let template: any = lodash.template(SELECT_<type.upperName>
+                + ` \<%if(<type.primaryKeyMembers:{member|<member.name>}; separator = " || ">){%>where
+                    <selectFields(type.primaryKeyMembers)>
+                \<%\}%>`);
+        return template({<templateMembers(type.primaryKeyMembers)>});
+<else>
+    public static getQuery(): string
+    {
+        return SELECT_<type.upperName>;
+<endif>
+    }
+
+<if(type.hasSelectList)>
+    <type.selectListMembers:{member|<declareSelectListMember(type, member, member.selectList, true)>}>
+<endif>
+
+<if(type.hasPrimaryKey)>
+    public static async fill(connector: SqlConnector, sqlPool: any, <declareAsParams(type.primaryKeyMembers)>): Promise\<Simple<type.interfaceName>\>
+<else>
+    public static async fill(connector: SqlConnector, sqlPool: any): Promise\<Simple<type.interfaceName>\>
+<endif>
+    {
+<if(type.hasPrimaryKey)>
+        let query: string = <type.implementationClassName>.getQuery(<declareAsArguments(type.primaryKeyMembers)>);
+<else>
+        let query: string = <type.implementationClassName>.getQuery();
+<endif>
+        let results = await connector.query(sqlPool, query);
+        return new Simple<type.implementationClassName>(results.recordset[0]);
+    }
+
+    private static assignFromRecord(assignTo: Simple<type.interfaceName>, record: <type.name>): boolean
+    {
+        <assignTypeFromRecord(type, "assignTo", "record", false)>
+        return true;
+    }
+}
+<endif>
+
+export class <type.implementationClassName> implements <type.interfaceName>
+{
+    <type.tableMembers:{member|<declareInterfaceMember(member, true)>;};separator="\n">
+    <type.foreignKeyMembers:{member|<declareInterfaceReferenceMember(member, true)>;};separator="\n">
+    <type.externalReferenceMembers:{member|<declareInterfaceReferenceMember(member, true)>;};separator="\n">
+
+    constructor(from: <type.name>)
+    {
+        <type.implementationClassName>.assignFromRecord(this, from);
+    }
+
+<if(type.hasPrimaryKey)>
+    public static getQuery(<declareAsParams(type.primaryKeyMembers)>): string
+    {
+        let template: any = lodash.template(SELECT_<type.upperName>
+                + ` \<%if(<type.primaryKeyMembers:{member|<member.name>}; separator = " || ">){%>where
+                    <selectFields(type.primaryKeyMembers)>
+                \<%\}%>`);
+        return template({<templateMembers(type.primaryKeyMembers)>});
+<else>
+    public static getQuery(): string
+    {
+        return SELECT_<type.upperName>;
+<endif>
+    }
+
+<if(type.hasSelectList)>
+    <type.selectListMembers:{member|<declareSelectListMember(type, member, member.selectList, false)>}>
+<endif>
+
+<if(type.hasPrimaryKey)>
+    public static async fill(connector: SqlConnector, sqlPool: any, <declareAsParams(type.primaryKeyMembers)>): Promise\<<type.interfaceName>\>
+    {
+        let query: string = <type.implementationClassName>.getQuery(<declareAsArguments(type.primaryKeyMembers)>);
+        let results = await connector.query(sqlPool, query);
+<if(type.hasReferencedTypes)>
+        let newObj: <type.implementationClassName> = new <type.implementationClassName>(results.recordset[0]);
+        await <type.implementationClassName>.fillChildren(connector, sqlPool, newObj);
+        return newObj;
+<else>
+        return new <type.implementationClassName>(results.recordset[0]);
+<endif>
+    }
+<endif>
+
+<if(type.hasPrimaryKey)>
+    public static async fillAll(connector: SqlConnector, sqlPool: any, <declareAsParams(type.primaryKeyMembers)>): Promise\<<type.interfaceName>[]>
+<else>
+    public static async fillAll(connector: SqlConnector, sqlPool: any): Promise\<<type.interfaceName>[]>
+<endif>
+    {
+<if(type.hasPrimaryKey)>
+        let query: string = <type.implementationClassName>.getQuery(<declareAsArguments(type.primaryKeyMembers)>);
+<else>
+        let query: string = <type.implementationClassName>.getQuery();
+<endif>
+        let results = await connector.query(sqlPool, query);
+        <addMapFromRecordset(type, "results.recordset", "")>
+    }
+
+<if(type.hasParentReference)>
+    <type.parentReferenceMembers:{parentRef|<declareFillForParentReference(type, parentRef)>}>
+<endif>
+
+    public static async fillList(connector: SqlConnector, sqlPool: any): Promise\<<type.interfaceName>[]>
+    {
+        let results = await connector.query(sqlPool, SELECT_<type.upperName>);
+        <addMapFromRecordset(type, "results.recordset", "")>
+    }
+
+<if(type.hasReferencedTypes)>
+    static async fillChildren(connector: SqlConnector, sqlPool: any, newObj: <type.implementationClassName>)
+    {
+        <type.foreignKeyMembers:{member|<fillInterfaceReferenceMember(member, "newObj", "", false)>};separator="\n">
+        <type.externalReferenceMembers:{member|<fillInterfaceExternalMember(type, member, "newObj", "")>}>
+    }
+<endif>
+
+    private static assignFromRecord(assignTo: <type.interfaceName>, record: <type.name>): boolean
+    {
+        <assignTypeFromRecord(type, "assignTo", "record", false)>
+        return true;
+    }
+}
+
+>>
+
+declareAllTypesInterfaces(schemaName, types) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <first(types).generateDate>
+
+export function charToBoolean(rawChar: string): boolean
+{
+    return rawChar === "Y";
+}
+
+export function bitToBoolean(rawNumber: number): boolean
+{
+    return rawNumber !== 0;
+}
+
+export interface ConnectionPool
+{
+    connect() : Promise\<ConnectionPool>;
+    close(): Promise\<boolean>;
+    driver: string;
+}
+
+
+export interface SqlConnector
+{
+    connect(): Promise\<ConnectionPool>;
+    query(sqlPool: ConnectionPool, query: string): Promise\<any>;
+}
+
+<declareAllTypesProvider(schemaName, types, true, "", false)>
+
+<types:{type|<declareTypescriptInterfaces(type)>}>
+
+>>
+
+declareAllTypes(schemaName, types) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <first(types).generateDate>
+
+import lodash from "lodash";
+import { SqlServerConnection } from "../SqlServerConnector";
+import {
+    IDboProvider,
+    charToBoolean, bitToBoolean,
+    SqlConnector,
+    <types:{type|<type.name>, <if(type.buildSimpleType)>Simple<type.interfaceName>, <endif><type.interfaceName>};separator=",\n">
+    } from "./AllInterfaces";
+import {SqlServerWindowsAuthConnector} from "../SqlServerWindowAuthConnector";
+
+<declareAllTypesProvider(schemaName, types, false, "", false)>
+
+<types:{type|<declareTypescriptInterface(type)>}>
+
+>>
+
+filterSingleMockByPrimaryKeys(type, filterVar) ::= <%
+<type.primaryKeyMembers:{member|<if(member.isNumeric)>Number(<filterVar>.<member.name>)<else><filterVar>.<member.name><endif> === <member.name>};separator=" && ">
+%>
+
+declareTypescriptMockInterface(type) ::= <<
+
+<if(type.buildSimpleType)>
+export class Simple<type.implementationClassName>_Mock implements Simple<type.interfaceName>
+{
+    <type.tableMembers:{member|<declareInterfaceMember(member, true)>};separator=";\n">;
+
+    constructor(from: <type.name>)
+    {
+        Simple<type.implementationClassName>_Mock.assignFromRecord(this, from);
+    }
+
+
+<if(type.hasSelectList)>
+    <type.selectListMembers:{member|<declareMockSelectListMember(type, member, member.selectList, true)>}>
+<endif>
+
+<if(type.hasPrimaryKey)>
+    public static async fill(connector: SqlConnector, sqlPool: any, <declareAsParams(type.primaryKeyMembers)>): Promise\<Simple<type.interfaceName>\>
+    {
+        let result: <type.name> | undefined = await lodash.find(MOCK_DB.schema.<type.name>, (value: <type.name>) => <filterSingleMockByPrimaryKeys(type, "value")>);
+        if(!result)
+        {
+            throw new Error("No <type.name> found for <primaryKeysByValue(type.primaryKeyMembers)>);
+        }
+        return new Simple<type.implementationClassName>_Mock(result);
+    }
+<endif>
+
+    private static assignFromRecord(assignTo: Simple<type.interfaceName>, record: <type.name>): boolean
+    {
+        <assignTypeFromRecord(type, "assignTo", "record", true)>
+        return true;
+    }
+
+}
+<endif>
+
+export class <type.implementationClassName>_Mock implements <type.interfaceName>
+{
+    <type.tableMembers:{member|<declareInterfaceMember(member, true)>;};separator="\n">
+    <type.foreignKeyMembers:{member|<declareInterfaceReferenceMember(member, true)>;};separator="\n">
+    <type.externalReferenceMembers:{member|<declareInterfaceReferenceMember(member, true)>;};separator="\n">
+
+    constructor(from: <type.name>)
+    {
+        <type.implementationClassName>_Mock.assignFromRecord(this, from);
+    }
+
+<if(type.hasSelectList)>
+    <type.selectListMembers:{member|<declareMockSelectListMember(type, member, member.selectList, false)>}>
+<endif>
+
+<if(type.hasPrimaryKey)>
+    public static async fill(connector: SqlConnector, sqlPool: any, <declareAsParams(type.primaryKeyMembers)>): Promise\<<type.interfaceName> | null>
+<else>
+    public static async fill(connector: SqlConnector, sqlPool: any): Promise\<<type.interfaceName> | null>
+<endif>
+    {
+<if(type.hasPrimaryKey)>
+        let result: <type.name> | null = await lodash
+                                .find(MOCK_DB.schema.<type.name>, (value: <type.name>) => <filterSingleMockByPrimaryKeys(type, "value")>) || null;
+<else>
+        let result: <type.name> | null = await lodash.filter(MOCK_DB.schema.<type.name>, (value: <type.name>) => true).first();
+<endif>
+        if(result)
+        {
+            let newObj: <type.implementationClassName>_Mock = new <type.implementationClassName>_Mock(result);
+<if(type.hasReferencedTypes)>
+            await <type.implementationClassName>_Mock.fillChildren(connector, sqlPool, newObj);
+<endif>
+            return newObj;
+        }
+        return null;
+    }
+
+<if(type.hasPrimaryKey)>
+    public static async fillAll(connector: SqlConnector, sqlPool: any, <declareAsParams(type.primaryKeyMembers)>): Promise\<<type.interfaceName>[]>
+<else>
+    public static async fillAll(connector: SqlConnector, sqlPool: any): Promise\<<type.interfaceName>[]>
+<endif>
+    {
+<if(type.hasPrimaryKey)>
+        let results: <type.name>[] = await lodash.filter(MOCK_DB.schema.<type.name>, (value: <type.name>) => <filterSingleMockByPrimaryKeys(type, "value")>);
+<else>
+        let results: <type.name>[] = await lodash.filter(MOCK_DB.schema.<type.name>, (value: <type.name>) => true);
+<endif>
+        <addMapFromRecordset(type, "results", "_Mock")>
+    }
+
+<if(type.hasParentReference)>
+    <type.parentReferenceMembers:{parentRef|<declareFillForMockParentReference(type, parentRef)>}>
+<endif>
+
+    public static async fillList(connector: SqlConnector, sqlPool: any): Promise\<<type.interfaceName>[]>
+    {
+        let results = await MOCK_DB.schema.<type.name>;
+        <addMapFromRecordset(type, "results", "_Mock")>
+    }
+
+<if(type.hasReferencedTypes)>
+    static async fillChildren(connector: SqlConnector, sqlPool: any, newObj: <type.implementationClassName>_Mock)
+    {
+        <type.foreignKeyMembers:{member|<fillInterfaceReferenceMember(member, "newObj", "_Mock", true)>};separator="\n">
+        <type.externalReferenceMembers:{member|<fillInterfaceExternalMember(type, member, "newObj", "_Mock")>}>
+    }
+<endif>
+
+    private static assignFromRecord(assignTo: <type.interfaceName>, record: <type.name>): boolean
+    {
+        <assignTypeFromRecord(type, "assignTo", "record", true)>
+        return true;
+    }
+
+ }
+
+>>
+
+declareAllTypesMock(schemaName, types) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <first(types).generateDate>
+
+import lodash from "lodash";
+
+import {
+    IDboProvider,
+    charToBoolean, bitToBoolean,
+    SqlConnector,
+    <types:{type|<type.name>, <if(type.buildSimpleType)>Simple<type.interfaceName>, <endif><type.interfaceName>};separator=",\n">
+    } from "./AllInterfaces";
+import {MockSqlServerConnection} from "../sql-server/SqlServerConnector";
+
+let MOCK_DB: any = require("./cougar-site-877.json");
+
+<declareAllTypesProvider(schemaName, types, false, "_Mock", true)>
+
+<types:{type|<declareTypescriptMockInterface(type)>}>
+
+>>
+
+declareAsArgs(members) ::= <%
+<members:{member|<declareAsArg(member)>};separator=", ">
+%>
+
+declareAsAssociatedArgs(assocArgs) ::= <%
+<assocArgs:{assoc|<declareAsArg(assoc.member)>};separator=", ">
+%>
+
+declareAsArg(member) ::= <%
+<member.name>
+%>
+
+declareSelectListProvider(type, member, selectList, forInterface, appendName, forSimpleType) ::= <<
+<if(forInterface)>
+fill<type.nameCamelCase>Select<member.typescriptName>List(connector: SqlConnector, sqlPool: any, <declareAsListParam(member)><if(member.hasSelectListMembers)>, <declareAsAssociatedParams(selectList.associated)><endif>): Promise\<<if(forSimpleType)>Simple<endif><type.interfaceName>[]>;
+<else>
+public async fill<type.nameCamelCase>Select<member.typescriptName>List(connector: SqlConnector, sqlPool: any, <declareAsListParam(member)><if(member.hasSelectListMembers)>, <declareAsAssociatedParams(selectList.associated)><endif>): Promise\<<if(forSimpleType)>Simple<endif><type.interfaceName>[]>
+{
+    return await <type.implementationClassName><appendName>.fill<member.typescriptName>List(connector, sqlPool, <declareAsArg(member)><if(member.hasSelectListMembers)>, <declareAsAssociatedArgs(selectList.associated)><endif>);
+}
+<endif>
+>>
+
+declareFillForParentReferenceProvider(type, parentRef, forInterface, appendName) ::= <<
+<if(forInterface)>
+fill<type.nameCamelCase>For<parentRef.referencedType.nameCamelCase>(connector: SqlConnector, sqlPool: any, <parentRef.referenceMembers:{refMember|<declareAsParam(refMember)>};separator=", ">): <if(parentRef.isListReference)>Promise\<<type.interfaceName>[]><else>Promise\<<type.interfaceName><if(parentRef.isNullable)> | null<endif>\><endif>;
+<else>
+public async fill<type.nameCamelCase>For<parentRef.referencedType.nameCamelCase>(connector: SqlConnector, sqlPool: any, <parentRef.referenceMembers:{refMember|<declareAsParam(refMember)>};separator=", ">): <if(parentRef.isListReference)>Promise\<<type.interfaceName>[]><else>Promise\<<type.interfaceName><if(parentRef.isNullable)> | null<endif>\><endif>
+{
+    return await <type.implementationClassName><appendName>.fillFor<parentRef.referencedType.nameCamelCase>(connector, sqlPool, <declareAsArgs(parentRef.referenceMembers)>);
+}
+<endif>
+>>
+
+declareTypeProvider(type, forInterface, appendName) ::= <<
+
+<if(forInterface)>
+<if(type.hasPrimaryKey)>
+fill<type.nameCamelCase>(connector: SqlConnector, sqlPool: any, <declareAsParams(type.primaryKeyMembers)>): Promise\<<type.interfaceName> | null>;
+<else>
+fill<type.nameCamelCase>(connector: SqlConnector, sqlPool: any): Promise\<<type.interfaceName> | null>;
+<endif>
+<else>
+<if(type.hasPrimaryKey)>
+public async fill<type.nameCamelCase>(connector: SqlConnector, sqlPool: any, <declareAsParams(type.primaryKeyMembers)>): Promise\<<type.interfaceName> | null>
+{
+    return await <type.implementationClassName><appendName>.fill(connector, sqlPool, <declareAsArgs(type.primaryKeyMembers)>);
+}
+<else>
+public async fill<type.nameCamelCase>(connector: SqlConnector, sqlPool: any): Promise\<<type.interfaceName> | null>
+{
+    return await <type.implementationClassName><appendName>.fill(connector, sqlPool);
+}
+<endif>
+<endif>
+
+<if(forInterface)>
+<if(type.hasPrimaryKey)>
+fill<type.nameCamelCase>All(connector: SqlConnector, sqlPool: any, <declareAsParams(type.primaryKeyMembers)>): Promise\<<type.interfaceName>[]>;
+<else>
+fill<type.nameCamelCase>All(connector: SqlConnector, sqlPool: any): Promise\<<type.interfaceName>[]>;
+<endif>
+<else>
+<if(type.hasPrimaryKey)>
+public async fill<type.nameCamelCase>All(connector: SqlConnector, sqlPool: any, <declareAsParams(type.primaryKeyMembers)>): Promise\<<type.interfaceName>[]>
+{
+    return await <type.implementationClassName><appendName>.fillAll(connector, sqlPool, <declareAsArgs(type.primaryKeyMembers)>);
+}
+<else>
+public async fill<type.nameCamelCase>All(connector: SqlConnector, sqlPool: any): Promise\<<type.interfaceName>[]>
+{
+    return await <type.implementationClassName><appendName>.fillAll(connector, sqlPool);
+}
+<endif>
+<endif>
+
+<if(forInterface)>
+fill<type.nameCamelCase>List(connector: SqlConnector, sqlPool: any): Promise\<<type.interfaceName>[]>;
+<else>
+public async fill<type.nameCamelCase>List(connector: SqlConnector, sqlPool: any): Promise\<<type.interfaceName>[]>
+{
+    return await <type.implementationClassName><appendName>.fillList(connector, sqlPool);
+}
+<endif>
+
+<if(type.hasSelectList)>
+<type.selectListMembers:{member|<declareSelectListProvider(type, member, member.selectList, forInterface, appendName, false)>}>
+<endif>
+
+<if(type.hasParentReference)>
+<type.parentReferenceMembers:{parentRef|<declareFillForParentReferenceProvider(type, parentRef, forInterface, appendName)>}>
+<endif>
+
+>>
+
+declareAllTypesProvider(schemaName, types, forInterface, appendName, forMock) ::= <<
+<if(forInterface)>
+export interface I<schemaName>Provider
+<else>
+export class <schemaName>Provider<appendName> implements I<schemaName>Provider
+<endif>
+{
+<if(forInterface)>
+    buildConnector(serverName: string, database: string, securityModel: string): SqlConnector;
+<else>
+    public buildConnector(serverName: string, database: string, securityModel: string): SqlConnector
+    {
+    <if(forMock)>
+        let connector: SqlConnector = new MockSqlServerConnection(serverName, database);
+        return connector;
+    <else>
+        let sqlConnector: SqlConnector;
+        let bSqlConnector: boolean = true;
+
+        if (securityModel) {
+            switch (securityModel.toLowerCase()) {
+                case 'sql':
+                    sqlConnector = new SqlServerConnection(serverName, database);
+                    break;
+                case 'win':
+                    sqlConnector = new SqlServerWindowsAuthConnector(serverName, database);
+                    break;
+                default:
+                    throw new Error('Unknown security model');
+            }
+        }
+        else
+        {
+            sqlConnector = new SqlServerConnection(serverName, database);
+        }
+
+        try
+        {
+            return sqlConnector;
+        }
+        catch(error)
+        {
+            throw(error);
+        }
+    <endif>
+    }
+<endif>
+
+    <types:{type|<declareTypeProvider(type, forInterface, appendName)>}>
+}
+>>

@@ -1,0 +1,141 @@
+import "common.stg"
+
+memberAsJSONTemplateMember(member) ::= <%
+<if(member.isArray)>
+"<member.strippedName>": [<\n>
+    <if(member.isString)>"<endif><member.printfCode><if(member.isString)>"<endif>
+]
+<else>
+"<member.strippedName>": <if(member.isString)>"<endif><member.printfCode><if(member.isString)>"<endif>
+<endif>
+%>
+
+memberAsJSONUpdateTemplateMember(member, qoute) ::= <%
+<qoute><member.strippedName><qoute>: {
+<qoute>updateMethod<qoute>: <qoute>%s<qoute>,
+<if(member.isArray)>
+<qoute>value<qoute>: [%s]
+<else>
+<qoute>value<qoute>: <if(member.isString)><qoute><endif><member.printfCode><if(member.isString)><qoute><endif>
+<endif>
+}
+%>
+
+
+generateJSONTemplate(message) ::= <<
+{ "_msg_id": <message.defineId>, <message.members:{member|<memberAsJSONTemplateMember(member)>}; separator = ","> }
+>>
+
+generateJSONUpdateTemplate(message, quote) ::= <<
+{ <if(message.hasSiteIdMember)><quote>replaceSiteId<quote>: true, <quote>siteMembers<quote>: [<message.siteIdMember:{siteMember|<quote><siteMember.strippedName><quote>};separator=", ">],<endif> <if(message.hasEgmSerialNumberMember)><quote>replaceEGMId<quote>: true, <quote>egmMember<quote>: [<message.egmSerialNumberMember:{egmMember|<quote><egmMember.strippedName><quote>};separator=", ">],<endif> <message.members:{member|<memberAsJSONUpdateTemplateMember(member, quote)>}; separator = ","> }
+>>
+
+generateJSONDescription(schema) ::= <<
+{
+    "enums" : [
+        <schema.enums:{enum|<outputEnumAsJson(enum)>};separator=",\n">
+    ],
+    "total_messages": <schema.messagesCount>,
+    "messages_summary": [
+        <schema.messages:{message|{ "msg_id": <message.defineId>, "msg_name": "<message.name>", "msg_define": "<if(message.hasDefine)><message.define.name><endif>" \}};separator=",\n">
+    ],
+    "messages": [
+        <schema.messages:{message|<outputGenerationData(message)>};separator=",\n">
+    ]
+}
+>>
+
+generateCSVMessageDescription(schema) ::= <<
+msg_id, msg_name, msg_define
+<schema.defineMessagesById:{message|<message.defineId>, <message.name>, <if(message.hasDefine)><message.define.name><endif>};separator=",\n">
+>>
+
+memberAsSprintfUpdateArg(member) ::= <%
+<if(member.isArray)>
+"replace", ""  /* <member.strippedName> **define array as string** */
+<else>
+<if(member.hasMessageType)>
+"replace", ""  /* <member.strippedName> **define member structure as string** */
+<elseif(member.hasEnumType)>
+"replace", ""  /* <member.strippedName> use enum value as string*/
+<elseif(member.isFiletime)>
+"combine", systime<member.strippedName>.wYear, systime<member.strippedName>.wMonth, systime<member.strippedName>.wDay, systime<member.strippedName>.wHour, systime<member.strippedName>.wMinute, systime<member.strippedName>.wSecond, systime<member.strippedName>.wMilliseconds  /* <member.strippedName> use system time values */
+<elseif(member.isBoolean)>
+"replace", "true"  /* <member.strippedName> use "true" or "false" */
+<elseif(member.isString)>
+"replace", ""  /* <member.strippedName> */
+<else>
+"combine", 0  /* <member.strippedName> **combine or replace numeric value** */
+<endif>
+<endif>
+%>
+
+memberAsGTestExpectation(member, path) ::= <%
+<if(member.isArray)>
+{<\n>
+    size_t nIndex(0);<\n>
+    <member.cppArrayType>\<<member.singleValueCppType><if(!member.isVariableLengthArray)>, <member.arraySize><endif>> list<member.strippedName> = {{}};<\n>
+    for(auto val : <path><member.name>)<\n>
+    {<\n>
+<if(member.hasMessageType)>
+        <member.messageType.members:{member|<memberAsGTestExpectation(member, "val.")>;<\n>}>
+<else>
+        EXPECT_EQ(list<member.strippedName>[nIndex++], val);<\n>
+<endif>
+    }<\n>
+}
+<else>
+<if(member.hasMessageType)>
+<member.messageType.members:{innerMember|<memberAsGTestExpectation(innerMember, [path, member.name, "."])>;<\n>}>
+<elseif(member.hasEnumType)>
+EXPECT_EQ(<member.enumType.name>, <path><member.name>)
+<elseif(member.isFiletime)>
+EXPECT_EQ(ft<member.strippedName>.dwHighDateTime, <path><member.name>.dwHighDateTime);<\n>
+EXPECT_EQ(ft<member.strippedName>.dwLowDateTime, <path><member.name>.dwLowDateTime)
+<elseif(member.isBoolean)>
+EXPECT_EQ(true, <path><member.name>)
+<elseif(member.isString)>
+EXPECT_EQ("", <path><member.name>)
+<else>
+EXPECT_EQ(0, <path><member.name>)
+<endif>
+<endif>
+%>
+
+generateSprintfUpdateTemplate(message) ::= <<
+{
+    char szUpdate<message.plainName>[<message.totalUpdateJsonSize>];
+    std::memset(szUpdate<message.plainName>, 0, <message.totalUpdateJsonSize>);
+    <message.fileTimeMembers:{member|SYSTEMTIME systime<member.strippedName> = { 0, 0, 0, 0, 0, 0, 0 \};<\n>}>
+    sprintf
+    (
+        szUpdate<message.plainName>,
+        "{ <if(message.hasSiteIdMember)>\"replaceSiteId\": true, \"siteMembers\": [<message.siteIdMember:{siteMember|\"<siteMember.strippedName>\"};separator=", ">],<endif> <if(message.hasEgmSerialNumberMember)>\"replaceEGMId\": true, \"egmMember\": [<message.egmSerialNumberMember:{egmMember|\"<egmMember.strippedName>\"};separator=", ">],<endif> <message.members:{member|<memberAsJSONUpdateTemplateMember(member, "\\\"")>}; separator = ","> }",
+        <message.members:{member|<memberAsSprintfUpdateArg(member)>};separator=", \n">
+    );
+
+    <message.members:{member|<memberAsGTestExpectation(member, ["pmsg", message.plainName, "->"])>;<\n>}>
+\}
+>>
+
+generateComponentMessageList(comp) ::= <<
+{
+    "name": "<comp.componentName>",
+     "messages": [
+        <comp.messages:{message|{ "name": "<message.name>", "id": "<message.define.name>", "id_value": <message.defineId> \}};separator=",\n">
+    ]
+}
+>>
+
+generateConsumerGeneratorJson(schema) ::= <<
+{
+    "cougar" : {
+        "generated" : [
+            <schema.generators:{comp|<generateComponentMessageList(comp)>};separator=",\n">
+        ],
+        "consumed" : [
+            <schema.consumers:{comp|<generateComponentMessageList(comp)>};separator=",\n">
+        ]
+    }
+}
+>>

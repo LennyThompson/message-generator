@@ -1,0 +1,31 @@
+import "common.stg"
+
+addFieldDescription(attribute) ::= <%
+| <attribute.shortDescription> | <attribute.longDescription>
+%>
+
+declareMember(member) ::= <<
+<member.type> <member.name><if(member.isDeclaredArray)>[<member.arraySize>]<endif>;    //@fielddesc <member.name><if(member.hasFieldDescriptionAttribute)> <addFieldDescription(member.fieldDescriptionAttribute)><endif>
+>>
+
+declareMessage(message) ::= <<
+struct <message.name>   // Define: <message.define.name>, value: <message.define.numericValue>
+{
+    //@description  <message.name> | <message.description>
+    //@category		<message.category>
+    //@generator	<message.generator>
+    //@consumer		<message.consumer>
+    //@alertlevel	<message.alertLevel>
+    //@wabfilter	<message.wabFilter>
+    //@reason		<message.reason>
+
+    <message.members:{member|<declareMember(member)><\n>}>
+};
+
+>>
+
+declareCougarMessageTypes(schema) ::= <<
+
+<schema.messages:{message|<if(message.hasDefine)><declareMessage(message)><endif>}>
+
+>>

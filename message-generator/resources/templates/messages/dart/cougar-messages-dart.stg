@@ -1,0 +1,51 @@
+memberAsFreezedFactoryArg(member) ::=
+<%
+@JsonKey(name: '<member.strippedName>') required <member.dartFullType> <member.strippedName>
+%>
+
+addMemberDependencies(message) ::=
+<%
+<message.typeDependencies:{depends|import '<depends.lowerSnakeName>.msg.dart';};separator="\n">
+%>
+
+addMemberEnumDependencies(message) ::=
+<%
+<message.enumDependencies:{enum|import '<enum.shortNameSnakeCase>.enum.dart';};separator="\n">
+%>
+
+generateCougarMessagesDart(schema, message) ::=
+<<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+<if(message.hasMessageTypeMember)><addMemberDependencies(message)><endif>
+<if(message.hasEnumTypeMember)><addMemberEnumDependencies(message)><endif>
+
+part '<message.lowerSnakeName>.msg.freezed.dart';
+part '<message.lowerSnakeName>.msg.g.dart';
+
+@freezed
+class <message.name> with _$<message.name>{
+  <if(message.hasNumericDefine)>static const int MsgId = <message.define.numericValue>;<endif>
+
+  const factory <message.name>({
+    <message.members:{member|<memberAsFreezedFactoryArg(member)>};separator=",\n">
+  }) = _<message.name>;
+  factory <message.name>.fromJson(Map\<String, dynamic> json)
+    => _$<message.name>FromJson(json);
+}
+>>
+
+generateCougarEnumDart(schema, enum) ::=
+<<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+import 'package:json_annotation/json_annotation.dart';
+
+enum <enum.name> {
+  <enum.values:{value|@JsonValue('<value.name>') <value.name>};separator=",\n">
+}
+>>

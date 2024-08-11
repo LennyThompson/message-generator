@@ -1,0 +1,22 @@
+import "common.stg"
+
+addMessageToSiteFilter(message) ::= <%
+<if(!message.isSITEFilter)>// <endif><message.defineId>
+
+%>
+
+addHOSTWabFilter(message) ::= <%
+<if(message.isHOSTFilter)><message.define.numericValue><if(message.hasHOSTMemberFilter)> <message.hOSTMemberOffset> <message.hOSTMemberByteSize> SiteID <else>  <endif><else>// <message.define.numericValue><endif> // <message.define.name><if(message.hasHOSTMemberFilter)>.<message.hOSTMemberFilter><endif>
+%>
+
+addSITEWabFilter(message) ::= <%
+<if(message.isSITEFilter)><message.define.numericValue><if(message.hasHOSTMemberFilter)> <message.sITEMemberOffset> <message.sITEMemberByteSize> SiteID <else>  <endif><else>// <message.define.numericValue><endif> // <message.define.name><if(message.hasSITEMemberFilter)>.<message.sITEMemberFilter><endif>
+%>
+
+generateHOSTWabFilter(schema) ::= <<
+<schema.orderedMessages:{message|<addHOSTWabFilter(message)><\n>}>
+>>
+
+generateSITEWabFilter(schema) ::= <<
+<schema.orderedMessages:{message|<addSITEWabFilter(message)><\n>}>
+>>

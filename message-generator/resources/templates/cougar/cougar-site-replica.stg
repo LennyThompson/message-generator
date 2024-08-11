@@ -1,0 +1,253 @@
+addIncrementerDefine(detail) ::=
+<<
+<detail.values:{value|<value>};separator="\n">
+>>
+
+generateIdUpdates(mapping) ::=
+<<
+<if(mapping.updateFunctionDetails)>
+DECLARE @Decrement INT;
+DECLARE @Increment BIGINT;
+<if(mapping.hasIncrementerDefine)>
+<mapping.incrementerDefines:{detail|<addIncrementerDefine(detail)>};separator="\n">
+<else>
+SELECT @Decrement = old_id, @Increment = new_id FROM id_mapping WHERE table_name = 'css_site';
+<endif>
+
+INSERT INTO id_mapping(old_id, new_id, table_name, field_name)
+    SELECT
+        <if(mapping.useDistinct)>
+        DISTINCT <mapping.field.name>,
+        <else>
+        <mapping.field.name>,
+        <endif>
+        dbo.update_<mapping.table.name>_<mapping.field.name>(@Decrement, <if(mapping.hasCustomIncrementer)><mapping.customIncrementer.values:{value|<value>}><else>@Increment<endif>, <mapping.field.name>),
+        '<mapping.table.name>',
+        '<mapping.field.name>'
+    FROM <mapping.table.name>
+    WHERE <mapping.field.name> IS NOT NULL;
+
+<endif>
+>>
+
+generateIdMapping(table) ::=
+<<
+<if(table.hasCustomUpdateFunction)>
+<table.mappings:{mapping|<generateIdUpdates(mapping)>};separator="\nGO\n">
+<else>
+INSERT INTO id_mapping(old_id, new_id, table_name, field_name, 'id')
+    SELECT id, update_<table.name>_id(0, @lastNewId, id), '<table.name>', 'id' FROM <table.name>;
+
+<endif>
+>>
+
+addSpecificIdUpdateFunction(mapping) ::=
+<<
+<if(mapping.updateFunctionDetails)>
+IF( EXISTS (SELECT *
+     FROM INFORMATION_SCHEMA.ROUTINES
+     WHERE ROUTINE_SCHEMA = 'dbo'
+     AND  ROUTINE_NAME = 'update_<mapping.table.name>_<mapping.field.name>'))
+BEGIN
+    DROP FUNCTION dbo.update_<mapping.table.name>_<mapping.field.name>;
+END
+GO
+
+CREATE FUNCTION update_<mapping.table.name>_<mapping.field.name>(
+    @old_increment INT,
+    @new_increment BIGINT,
+    @old_id BIGINT
+)
+RETURNS BIGINT
+AS
+BEGIN
+    <mapping.updateFunctionDetails.values:{value|<value>};separator="\n">
+END;
+GO
+<endif>
+>>
+
+addIdUpdateFunction(table) ::=
+<<
+<if(table.hasCustomUpdateFunction)>
+<table.mappings:{mapping|<addSpecificIdUpdateFunction(mapping)>}>
+<else>
+IF( EXISTS (SELECT *
+     FROM INFORMATION_SCHEMA.ROUTINES
+     WHERE ROUTINE_SCHEMA = 'dbo'
+     AND  ROUTINE_NAME = 'update_<table.name>_id'))
+BEGIN
+    DROP FUNCTION dbo.update_<table.name>_id;
+END
+GO
+
+CREATE FUNCTION update_<table.name>_id(
+    @old_increment INT,
+    @new_increment BIGINT,
+    @old_id BIGINT
+)
+RETURNS BIGINT
+AS
+BEGIN
+    RETURN @old_id + @new_increment;
+END;
+GO
+<endif>
+>>
+
+addFieldUpdate(table, fieldMapping) ::=
+<<
+-- Update <fieldMapping.sourceTable>.<fieldMapping.sourceField> in <fieldMapping.fieldName>
+UPDATE <table.name>
+<if(fieldMapping.hasCustomFieldUpdate)>
+<fieldMapping.customFieldUpdate:{updateLine|<updateLine>};separator="\n">
+<else>
+SET <table.name>.<fieldMapping.fieldName> = map.new_id
+    FROM <table.name>
+    INNER JOIN id_mapping map
+    ON map.table_name = '<fieldMapping.sourceTable>'
+    AND map.field_name = '<fieldMapping.sourceField>'
+    AND map.old_id = <table.name>.<fieldMapping.fieldName>;
+<endif>
+>>
+
+generateTableInsertSql(table) ::=
+<<
+
+-- Inserts for **** <table.name> ****
+
+-- Insert into <table.name> new record for <table.fieldMappings:{field|<field.name>};separator=", ">
+INSERT
+INTO <table.name>
+    (
+        <table.fieldMappings:{field|<field.name>};separator=",\n">,
+        <table.fieldWithoutMappings:{field|<field.name>};separator=",\n">
+    )
+    SELECT
+        <table.fieldMappings:{field|map<i>.new_id};separator=",\n">,
+        <table.fieldWithoutMappings:{field|<field.name>};separator=",\n">
+    FROM <table.name>
+        <table.fieldMappings:{field|INNER JOIN id_mapping map<i> ON map<i>.table_name = '<field.sourceTable>' AND map<i>.field_name = '<field.sourceField>' AND map<i>.old_id = <table.name>.<field.fieldName>};separator="\n">
+    WHERE
+        <table.fieldMappings:{field|<table.name>.<field.name> = map<i>.old_id};separator=" AND ">
+
+-- End updates for **** <table.name> ****
+
+>>
+
+generateTableDeleteSql(table) ::=
+<<
+
+-- Deletes for **** <table.name> ****
+
+-- Delete from <table.name> old record for <table.fieldMappings:{field|<field.name>};separator=", ">
+DELETE <table.name> FROM <table.name>
+    <table.fieldMappings:{field|INNER JOIN id_mapping map<i> ON map<i>.table_name = '<field.sourceTable>' AND map<i>.field_name = '<field.sourceField>' AND map<i>.old_id = <table.name>.<field.fieldName>};separator="\n">
+    WHERE
+        <table.fieldMappings:{field|<table.name>.<field.name> = map<i>.old_id};separator=" AND ">
+
+-- End updates for **** <table.name> ****
+
+>>
+
+generateTableUpdateSql(table) ::=
+<<
+
+-- Updates for **** <table.name> ****
+
+<table.fieldMappings:{fieldMapping|<addFieldUpdate(table, fieldMapping)>};separator="\n">
+
+-- End updates for **** <table.name> ****
+
+>>
+
+generateSql(listControlTables) ::=
+<<
+USE cougar;
+
+DECLARE @Debug int;
+SELECT @Debug = 0;
+
+IF (@Debug = 1 AND EXISTS (SELECT *
+                 FROM INFORMATION_SCHEMA.TABLES
+                 WHERE TABLE_SCHEMA = 'dbo'
+                 AND  TABLE_NAME = 'id_mapping'))
+BEGIN
+    DROP TABLE id_mapping;
+END
+
+IF (NOT EXISTS (SELECT *
+                 FROM INFORMATION_SCHEMA.TABLES
+                 WHERE TABLE_SCHEMA = 'dbo'
+                 AND  TABLE_NAME = 'id_mapping'))
+BEGIN
+    CREATE TABLE id_mapping ( id bigint identity(1,1) not null,
+        old_id bigint not null,
+        new_id bigint not null,
+        table_name varchar(50),
+        field_name varchar(50),
+        created datetime not null constraint [DF_id_mapping]  DEFAULT ((getdate())),
+        constraint [PK_id_mapping] primary key clustered
+        (
+            [id] asc
+        ),
+        constraint [AK_id_mapping] unique
+        (
+            [old_id], [new_id], [table_name], [field_name]
+        )
+    );
+END
+GO
+
+IF(EXISTS (SELECT *
+           FROM INFORMATION_SCHEMA.TABLES
+           WHERE TABLE_SCHEMA = 'dbo'
+           AND  TABLE_NAME = 'get_random_bigint_view'))
+BEGIN
+    DROP VIEW get_random_bigint_view
+END
+GO
+
+CREATE VIEW get_random_bigint_view AS SELECT CAST(RAND() * 9223372036854775807 AS BIGINT) as Value
+GO
+
+<listControlTables:{table|<addIdUpdateFunction(table)>}>
+>>
+
+addDelete(delete) ::=
+<<
+-- Delete unknown <delete.targetField.name> ids from <delete.targetTable.name>
+
+DELETE FROM <delete.targetTable.name>
+WHERE <delete.targetTable.name>.<delete.targetField.name> NOT IN
+(
+<if(delete.details)>
+    <delete.details:{value|<value>};separator="\n">
+<else>
+    SELECT old_id FROM id_mapping
+    WHERE table_name = '<delete.sourceTable.name>'
+    AND field_name = '<delete.sourceField.name>'
+<endif>
+);
+>>
+
+generateDelete(mapping) ::=
+<<
+<if(mapping.hasDeleteMapping)>
+<mapping.deleteMappings:{delete|<addDelete(delete)>};separator="\n">
+<endif>
+>>
+
+generateDeleteSql(mappingList) ::=
+<<
+    <mappingList.mappings:{mapping|<generateDelete(mapping)>}>
+>>
+
+generateUpdateSql(schema) ::=
+<<
+    <schema.foreignKeyedTypes:{table|<generateTableInsertSql(table)>}>
+    <schema.nonForeignKeyedTypes:{table|<generateTableUpdateSql(table)>}>
+    <schema.foreignKeyedTypes:{table|<generateTableDeleteSql(table)>}>
+
+    <generateDeleteSql(schema.mappings)>
+>>

@@ -1,0 +1,372 @@
+import "common.stg"
+import "cougarMessagesJson.stg"
+
+memberAsJSON(message, member, varName, testArray, arrayIndex, variableArraySize, testNonMessage) ::= <%
+<if(testArray && member.isArray)>
+    <if(testNonMessage && message.isNonMessage)>
+        <if(member.isVariableLengthArray)>
+get<message.plainName>_<member.strippedName>ArrayAsJSON(<varName>, <variableArraySize>).c_str()
+        <else>
+get<message.plainName>_<member.strippedName>ArrayAsJSON(<varName>).c_str()
+        <endif>
+    <else>
+        <if(member.isVariableLengthArray)>
+get<member.strippedName>ArrayAsJSON(<varName>, <variableArraySize>).c_str()
+        <else>
+get<member.strippedName>ArrayAsJSON(<varName>).c_str()
+        <endif>
+    <endif>
+<else>
+    <if(member.hasMessageType)>
+        <if(member.messageType.isNonMessage)>
+get<member.messageType.plainName>_RawDataAsJSON(&<varName>-><member.name><arrayIndex>, 0).c_str()
+        <else>
+<member.messageType.name>_Msg::getRawDataAsJSON(reinterpret_cast\<const void*>(&<varName>-><member.name><arrayIndex>), CougarMessages::getJSONTemplates(<member.messageType.define.name>), <variableArraySize>).c_str()
+        <endif>
+    <elseif(member.isFiletime)>
+systime<member.name>.wYear, systime<member.name>.wMonth, systime<member.name>.wDay, systime<member.name>.wHour, systime<member.name>.wMinute, systime<member.name>.wSecond, systime<member.name>.wMilliseconds
+    <elseif(member.hasEnumType)>
+<member.enumType.shortName>_Enum(<varName>-><member.name><arrayIndex>).c_str()
+    <elseif(member.isBoolean)>
+(<varName>-><member.name><arrayIndex> == 0 ? "false" : "true")
+    <else>
+<member.JSONCast><varName>-><member.name><arrayIndex>
+    <endif>
+<endif>
+%>
+
+defineArrayMemberToJSON(message, member) ::= <<
+<if(member.isVariableLengthArray)>
+std::string <message.name>_Msg::get<member.strippedName>ArrayAsJSON(const void* pvMsgData, size_t nDataLength)
+<else>
+std::string <message.name>_Msg::get<member.strippedName>ArrayAsJSON(const void* pvMsgData)
+<endif>
+{
+    std::stringstream strmArray;
+    const <message.name>* pmsgData = reinterpret_cast\<const <message.name>*>(pvMsgData);
+    <if(member.isVariableLengthArray)>
+    size_t nVariableArrayLength(0);
+<if(message.hasVariableLengthArrayMember)>
+    if(nDataLength > sizeof(<message.name>))
+    {
+        nVariableArrayLength = nDataLength - sizeof(<message.name>);
+        nVariableArrayLength /= sizeof(<message.variableLengthArrayMember.singleValueCppType>);
+        ++nVariableArrayLength;
+    }
+<endif>
+    for(size_t nIndex(0); nIndex \< nVariableArrayLength; nIndex++)
+    {
+    <else>
+    for(size_t nIndex(0); nIndex \< <member.arraySize>; nIndex++)
+    {
+    <endif>
+        if(nIndex > 0)
+        {
+            strmArray \<\< ',';
+        }
+        strmArray \<\< <memberAsJSON(message, member, "pmsgData", false, "[nIndex]", "nVariableArrayLength", true)>;
+    }
+    return strmArray.str();
+}
+>>
+
+defineNonMessageArrayMemberToJSON(message, member) ::= <<
+<if(member.isVariableLengthArray)>
+std::string get<message.plainName>_<member.strippedName>ArrayAsJSON(const void* pvMsgData, size_t nVariableArrayLength)
+<else>
+std::string get<message.plainName>_<member.strippedName>ArrayAsJSON(const void* pvMsgData)
+<endif>
+{
+    std::stringstream strmArray;
+    strmArray \<\< std::string("[");
+    const <message.name>* pmsgData = reinterpret_cast\<const <message.name>*>(pvMsgData);
+    size_t nIndex(0);
+    strmArray \<\< <memberAsJSON(message, member, "pmsgData", false, "[nIndex++]", "", false)>;
+    <if(member.isVariableLengthArray)>
+    for(; nIndex \< nVariableArrayLength; nIndex++)
+    {
+    <else>
+    for(; nIndex \< <member.arraySize>; nIndex++)
+    {
+    <endif>
+        strmArray \<\< "," \<\< <memberAsJSON(message, member, "pmsgData", false, "[nIndex]", "", false)>;
+    }
+    strmArray \<\< std::string("]");
+    return strmArray.str();
+}
+>>
+
+
+memberAsInlineJSONTemplateMember(member) ::= <%
+\\"<member.strippedName>\\":
+<if(member.isArray)>
+ [%s]
+<else>
+ <if(member.isString)>\\"<endif><member.printfCode><if(member.isString)>\\"<endif>
+<endif>
+%>
+
+messageAsBase64Encoding(message, msgDataParam, dataLength) ::= <%
+<if(message.hasVariableLengthArrayMember)>
+base64_encode(reinterpret_cast\<const uint8_t*>(<msgDataParam>), <dataLength>)
+<else>
+base64_encode(reinterpret_cast\<const uint8_t*>(<msgDataParam>), <dataLength>)
+<endif>
+%>
+
+generateInlineJSONTemplate(message) ::= <%
+<if(message.isNonMessage)>
+"{ <message.members:{member|<memberAsInlineJSONTemplateMember(member)>};  wrap="\"+\n \"", separator = ","> }"
+<else>
+"{ \\"_msg_type\\": \\"<message.defineId>\\", <message.members:{member|<memberAsInlineJSONTemplateMember(member)>};  wrap="\"+\n \"", separator = ","> }"
+<endif>
+%>
+
+generateInlineJSONUpdateTemplate(message) ::= <%
+"<generateJSONUpdateTemplate(message, "\\\"")>"
+%>
+
+defineArrayMemberFromJSON(message, member, jsonType, jsonVar, extraName) ::= <<
+<if(member.isVariableLengthArray)>
+<if(member.hasMessageType)>
+void <message.name>_Msg::get<member.strippedName>ArrayFrom<extraName>JSON(std::vector\<cougar_messages::<member.messageType.name>Ptr_t>& listValues, const <jsonType>& <jsonVar>)
+<else>
+void <message.name>_Msg::get<member.strippedName>ArrayFrom<extraName>JSON(std::vector\<<member.cppType>\>& listValues, const <jsonType>& <jsonVar>)
+<endif>
+<else>
+<if(member.hasMessageType)>
+void <message.name>_Msg::get<member.strippedName>ArrayFrom<extraName>JSON(std::array\<cougar_messages::<member.messageType.name>Ptr_t, <member.arraySize>\>& listValues, const <jsonType>& <jsonVar>)
+<else>
+void <message.name>_Msg::get<member.strippedName>ArrayFrom<extraName>JSON(std::array\<<member.cppType>, <member.arraySize>\>& listValues, const <jsonType>& <jsonVar>)
+<endif>
+<endif>
+>>
+
+defineNonMessageArrayMemberFromJSON(message, member, jsonType, jsonVar, extraName) ::= <<
+<if(member.isVariableLengthArray)>
+<if(member.hasMessageType)>
+void get<message.plainName>_<member.strippedName>ArrayFrom<extraName>JSON(std::vector\<cougar_messages::<member.messageType.name>Ptr_t>& listValues, const <jsonType>& <jsonVar>)
+<else>
+void get<message.plainName>_<member.strippedName>ArrayFrom<extraName>JSON(std::vector\<<member.cppType>\>& listValues, const <jsonType>& <jsonVar>)
+<endif>
+<else>
+<if(member.hasMessageType)>
+void get<message.plainName>_<member.strippedName>ArrayFrom<extraName>JSON(std::array\<cougar_messages::<member.messageType.name>Ptr_t, <member.arraySize>\>& listValues, const <jsonType>& <jsonVar>)
+<else>
+void get<message.plainName>_<member.strippedName>ArrayFrom<extraName>JSON(std::array\<<member.cppType>, <member.arraySize>\>& listValues, const <jsonType>& <jsonVar>)
+<endif>
+<endif>
+>>
+
+defineArrayMemberFromJSONBody(member, ptreeVar) ::= <<
+{
+    <if(!member.isVariableLengthArray)>
+    size_t nIndex(0);
+    <endif>
+    std::for_each
+    (
+        <ptreeVar>.begin(),
+        <ptreeVar>.end(),
+    <if(member.isVariableLengthArray)>
+        [&listValues](const boost::property_tree::ptree::value_type& valuePair)
+        {
+        <if(member.hasMessageType)>
+            <if(member.messageType.isNonMessage)>
+            listValues.push_back(get<member.messageType.plainName>_DirectFromJSON(valuePair.second));
+            <else>
+            listValues.push_back(<member.messageType.name>_Msg::getDirectFromJSON(valuePair.second));
+            <endif>
+        <else>
+            listValues.push_back(valuePair.second.get_value\<<member.cppType>\>());
+        <endif>
+        }
+    <else>
+        [&listValues, &nIndex](const boost::property_tree::ptree::value_type& valuePair)
+        {
+        <if(member.hasMessageType)>
+            <if(member.messageType.isNonMessage)>
+            listValues[nIndex++] = get<member.messageType.plainName>_DirectFromJSON(valuePair.second);
+            <else>
+            listValues[nIndex++] = <member.messageType.name>_Msg::getDirectFromJSON(valuePair.second);
+            <endif>
+        <else>
+            listValues[nIndex++] = valuePair.second.get_value\<<member.cppType>\>();
+        <endif>
+        }
+    <endif>
+    );
+}
+>>
+
+defineArrayMemberFromJSONBody_JSON(member, jsonFrom) ::= <<
+{
+    <if(!member.isVariableLengthArray)>
+    size_t nIndex(0);
+    <endif>
+    std::for_each
+    (
+        <jsonFrom>.begin(),
+        <jsonFrom>.end(),
+    <if(member.isVariableLengthArray)>
+        <if(member.hasMessageType)>
+        [&listValues](const nlohmann::json& value)
+        <else>
+        [&listValues](const <member.cppType>& value)
+        <endif>
+        {
+        <if(member.hasMessageType)>
+            <if(member.messageType.isNonMessage)>
+            listValues.push_back(get<member.messageType.plainName>_DirectFromJSON(value));
+            <else>
+            listValues.push_back(<member.messageType.name>_Msg::getDirectFromJSON(value));
+            <endif>
+        <else>
+            listValues.push_back(value);
+        <endif>
+        }
+    <else>
+        <if(member.hasMessageType)>
+        [&listValues, &nIndex](const nlohmann::json& value)
+        <else>
+        [&listValues, &nIndex](const <member.cppType>& value)
+        <endif>
+        {
+        <if(member.hasMessageType)>
+            <if(member.messageType.isNonMessage)>
+            listValues[nIndex++] = get<member.messageType.plainName>_DirectFromJSON(value);
+            <else>
+            listValues[nIndex++] = <member.messageType.name>_Msg::getDirectFromJSON(value);
+            <endif>
+        <else>
+            listValues[nIndex++] = value;
+        <endif>
+        }
+    <endif>
+    );
+}
+>>
+
+defineArrayMemberFromJSONBody_RapidJSON(member, jsonFrom) ::= <<
+{
+    <if(!member.isVariableLengthArray)>
+    size_t nIndex(0);
+    <endif>
+    for(rapidjson::Value::ConstValueIterator itJSON = <jsonFrom>.Begin(); itJSON != <jsonFrom>.End(); ++itJSON)
+    {
+    <if(member.isVariableLengthArray)>
+        <if(member.hasMessageType)>
+            <if(member.messageType.isNonMessage)>
+        listValues.push_back(get<member.messageType.plainName>_DirectFromRapidJSON(*itJSON));
+            <else>
+        listValues.push_back(<member.messageType.name>_Msg::getDirectFromRapidJSON(*itJSON));
+            <endif>
+        <else>
+        listValues.push_back(<if(member.fromJSONAdapter.hasJsonGetterCast)>(<member.fromJSONAdapter.jsonGetterCast>)<endif>itJSON-><member.fromJSONAdapter.rapidJSONGetter>());
+        <endif>
+    <else>
+        <if(member.hasMessageType)>
+            <if(member.messageType.isNonMessage)>
+        listValues[nIndex++] = get<member.messageType.plainName>_DirectFromRapidJSON(*itJSON);
+            <else>
+        listValues[nIndex++] = <member.messageType.name>_Msg::getDirectFromRapidJSON(*itJSON);
+            <endif>
+        <else>
+        listValues[nIndex++] = <if(member.fromJSONAdapter.hasJsonGetterCast)>(<member.fromJSONAdapter.jsonGetterCast>)<endif>itJSON-><member.fromJSONAdapter.rapidJSONGetter>();
+        <endif>
+    <endif>
+    }
+}
+>>
+
+localMemberUpdateFromRapidJSON(member, copyMsg, rapidJson) ::= <<
+<if(member.hasMessageType)>
+<if(member.isArray)>
+{
+    size_t nIndex(0);
+    const rapidjson::Value& val<member.strippedName> = <rapidJson>["<member.strippedName>"]["value"];
+    for
+    (
+        rapidjson::Value::ConstValueIterator itValue = val<member.strippedName>.Begin();
+        itValue != val<member.strippedName>.End();
+        ++itValue, ++nIndex
+    )
+    {
+<if(member.messageType.isNonMessage)>
+        <member.messageType.plainName>_valueUpdater((void*) &(<copyMsg>-><member.name>[nIndex]), *itValue, "");
+<else>
+        <member.messageType.name>_Msg::valueUpdater((void*) &(<copyMsg>-><member.name>[nIndex]), *itValue, "");
+<endif>
+    }
+}
+<else>
+if(<rapidJson>.HasMember("<member.strippedName>"))
+{
+<if(member.messageType.isNonMessage)>
+    <member.messageType.plainName>_valueUpdater((void*) &(<copyMsg>-><member.name>), <rapidJson>["<member.strippedName>"]["value"], "");
+<else>
+    <member.messageType.name>_Msg::valueUpdater((void*) &(<copyMsg>-><member.name>), <rapidJson>["<member.strippedName>"]["value"], "");
+<endif>
+}
+<endif>
+<else>
+<if(member.isArray)>
+<if(member.hasEnumType)>
+if(<rapidJson>.HasMember("<member.strippedName>") && !isUpdateCombine(<rapidJson>["<member.strippedName>"]))
+{
+    size_t nIndex(0);
+    const rapidjson::Value& val<member.strippedName> = <rapidJson>["<member.strippedName>"]["value"];
+    for
+    (
+        rapidjson::Value::ConstValueIterator itValue = val<member.strippedName>.Begin();
+        itValue != val<member.strippedName>.End();
+        ++itValue, ++nIndex
+    )
+    {
+        <copyMsg>-><member.name>[nIndex] = <member.enumType.shortName>_FromEnumStringValue(itValue->GetString());
+    }
+}
+<else>
+<member.fromJSONAdapter.updaterFunction>Array(<copyMsg>-><member.name>, <rapidJson>, "<member.strippedName>");
+<endif>
+<else>
+<if(member.hasEnumType)>
+if(<rapidJson>.HasMember("<member.strippedName>") && !isUpdateCombine(<rapidJson>["<member.strippedName>"]))
+{
+    <copyMsg>-><member.name> = <member.enumType.shortName>_FromEnumStringValue(<rapidJson>["<member.strippedName>"]["value"].GetString());
+}
+<else>
+<member.fromJSONAdapter.updaterFunction>(&<copyMsg>-><member.name>, <rapidJson>, "<member.strippedName>");
+<endif>
+<endif>
+<endif>
+>>
+
+directMemberUpdateFromRapidJSON(member, localSrc, rapidJson) ::= <<
+<if(member.hasMessageType)>
+<if(member.messageType.isNonMessage)>
+<member.messageType.plainName>_valueUpdater((void*) &(<localSrc><member.name>), <rapidJson>, "<member.strippedName>");
+<else>
+<member.messageType.name>_Msg::valueUpdater((void*) &(<localSrc><member.name>), <rapidJson>, "<member.strippedName>");
+<endif>
+<else>
+<if(member.isArray)>
+<member.fromJSONAdapter.updaterFunction>Array(<localSrc><member.name>, <rapidJson>, "<member.strippedName>");
+<else>
+<member.fromJSONAdapter.updaterFunction>(&(<localSrc><member.name>), <rapidJson>, "<member.strippedName>");
+<endif>
+<endif>
+>>
+
+directNonMessageMemberUpdateFromRapidJSON(member, localSrc, rapidJson) ::= <<
+<if(member.hasMessageType)>
+<if(member.messageType.isNonMessage)>
+<member.messageType.plainName>_valueUpdater((void*) &(<localSrc><member.name>), <rapidJson>, "<member.strippedName>");
+<endif>
+<else>
+<if(member.isArray)>
+<member.fromJSONAdapter.updaterFunction>Array(<localSrc><member.name>, <rapidJson>, "<member.strippedName>");
+<else>
+<member.fromJSONAdapter.updaterFunction>(&(<localSrc><member.name>), <rapidJson>, "<member.strippedName>");
+<endif>
+<endif>
+>>

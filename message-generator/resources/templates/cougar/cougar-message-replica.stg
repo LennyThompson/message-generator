@@ -1,0 +1,217 @@
+generateMongoUpdateForMessage(mapping, fieldAdapter) ::=
+<<
+query = {
+    $and :
+    [
+        <if(fieldAdapter.isSpecificFieldMapping)>{ _msgID : <fieldAdapter.message.define.name> },<endif>
+        {_timestamp : { $gte: dateStart, $lte: dateEnd }},
+        { "<fieldAdapter.memberPath>" : mapping.old_id }
+    ]
+};
+result = db[collName].updateMany
+(
+    query,
+    {
+        $set :
+        {
+            "<fieldAdapter.memberPath>" : mapping.new_id
+        }
+    }
+);
+updateCount += result.modifiedCount;
+if(verbose) { print("Updated " + updateCount + " of field <fieldAdapter.memberPath> values"); }
+if(updateCount % 1000 == 0)
+{
+    print("Updated " + updateCount + " <mapping.table.name>.<mapping.field.name> values")
+}
+>>
+
+generateMongoCountOfMessages(fieldAdapter) ::=
+<<
+findQuery = {
+    $and :
+    [
+        {_timestamp : { $gte: dateStart, $lte: dateEnd }},
+        { "<fieldAdapter.memberPath>" : { $in : listOldIds } }
+    ]
+};
+print("There are " + db[collName].find(findQuery).count() + " <fieldAdapter.memberPath> values to update");
+>>
+
+updateFunctionName(mapping) ::=
+<%
+updateMessagesFor<mapping.table.name>_<mapping.field.name>
+%>
+
+generateMongoUpdateForMessageFields(mapping, listFieldAdapter) ::=
+<<
+
+function <updateFunctionName(mapping)>(collMappings, db, collName, dateStart, dateEnd, verbose)
+{
+    print("Updates for <mapping.table.name>.<mapping.field.name>");
+
+    // Create additional indexes for non top level update fields
+
+    print("Create additional indexes");
+
+    db[collName].createIndexes
+    (
+        [
+            <mapping.uniqueMessageDependentFieldNames:{fieldNames|<addFieldIndex(fieldNames)>};separator=",\n">
+        ]
+    );
+    let mappingQuery = {$and: [{table_name: '<mapping.table.name>'}, {field_name: '<mapping.field.name>'}]};
+    let mappings = collMappings.find(mappingQuery);
+    let listOldIds = [];
+    let updateCount = 0;
+    let findQuery = {};
+    mappings.forEach(mapping => listOldIds.push(mapping.old_id));
+    print("Number of mappings = " + listOldIds.length);
+    <listFieldAdapter:{fieldAdapter|<generateMongoCountOfMessages(fieldAdapter)>};separator="\n">
+    mappings = collMappings.find(mappingQuery);
+    mappings.forEach
+    (
+        mapping =>
+        {
+            if(verbose) { print("Updating <mapping.table.name>, <mapping.field.name> with values = " + mapping.old_id + ", " + mapping.new_id); }
+            let query = {};
+            <listFieldAdapter:{fieldAdapter|<generateMongoUpdateForMessage(mapping, fieldAdapter)>};separator="\n">
+        }
+    );
+
+    // Drop the indexes created for non top level update fields
+
+    print("Drop additional indexes");
+
+    db[collName].dropIndexes
+    (
+        [
+            <mapping.uniqueMessageDependentFieldNames:{fieldNames|<addFieldIndexByName(fieldNames)>};separator=",\n">
+        ]
+    );
+}
+>>
+
+generateMongoUpdateFunctions(mapping) ::=
+<<
+<generateMongoUpdateForMessageFields(mapping, mapping.uniqueMessageFieldAdapters)>
+>>
+
+generateMongoIndex(fields) ::=
+<<
+<fields:{field|{ "<field.memberPath>" : 1 \}};separator=",\n">
+>>
+
+generateMongoUpdates(listMappings) ::=
+<<
+load("defines.js")
+
+// Load mapping field specific update functions...
+
+<listMappings:{mapping|load("udpate-<mapping.table.name>-<mapping.field.name>.js");};separator="\n">
+
+load("config-params.js");
+
+let mongoConn = new Mongo();
+let strDbName = config.mongo.update_db.name ? config.mongo.update_db.name : config.mongo.src_db.name;
+let db = mongoConn.getDB(strDbName);
+let dbMappings = mongoConn.getDB(config.mongo.mapping_db.name);
+
+let strMappingCollName = config.mongo.mapping_db.collection.name;
+let collMappings = dbMappings[strMappingCollName];
+let strMsgCollName = config.mongo.update_db.collection.name;
+let dateStart = ISODate(config.startTime);
+let dateEnd = ISODate(config.endTime);
+
+print("Updating db: " + strDbName + " collection: " + strMsgCollName);
+
+// Make global update to _siteID and _cssSiteID
+
+let mappingQuery = {$and: [{table_name: 'site'}, {field_name: 'id'}]};
+let mapping = collMappings.findOne(mappingQuery);
+db[strMsgCollName].updateMany({ _siteID : mapping.old_id }, { $set: { _siteID : mapping.new_id }});
+mappingQuery = {$and: [{table_name: 'css_site'}, {field_name: 'id'}]};
+mapping = collMappings.findOne(mappingQuery);
+db[strMsgCollName].updateMany({ _cssSiteID : mapping.old_id }, { $set: { _cssSiteID : mapping.new_id }});
+
+
+print("Starting updates...");
+<listMappings:{mapping|<updateFunctionName(mapping)>(collMappings, db, strMsgCollName, dateStart, dateEnd, config.verbose);};separator="\n">
+>>
+
+generateMessageIds(schema) ::=
+<<
+<schema.messages:{message|<if(message.hasDefine)>let <message.define.name> = <message.define.numericValue>;<endif>};separator="\n">
+>>
+
+addFieldIndex(fieldNames) ::=
+<%
+<fieldNames:{name|{ "<name>" : 1 \}};separator=",\n">
+%>
+
+addFieldIndexByName(fieldNames) ::=
+<%
+<fieldNames:{name|"<name>_1"};separator=",\n">
+%>
+
+generateMongoMoveCollection(mappings) ::=
+<<
+load("config-params.js");
+
+let mongoConn = new Mongo();
+let db = mongoConn.getDB(config.mongo.src_db.name);
+let dbUpdate = db;
+if(config.mongo.update_db.name)
+{
+    dbUpdate = mongoConn.getDB(config.mongo.update_db.name);
+}
+
+let collFrom = db[config.mongo.src_db.collection.name];
+let collTo = db[config.mongo.update_db.collection.name];
+
+// Create indexes on top level fields prior to inserts
+
+print("Moving message for site " + config.src_site.id + " to collection " + config.mongo.update_db.collection.name + " from collection " + config.mongo.src_db.collection.name);
+
+// There is a limit of 64 indexes on a single mongo collection, so initially only create indexes
+// on top level update fields.
+
+print("Creating indexes on top level update fields...");
+collTo.createIndexes
+(
+    [
+        <mappings.uniqueMessageTopLevelFieldNames:{fieldNames|<addFieldIndex(fieldNames)>};separator=",\n">
+    ]
+);
+
+let query = {
+    $or: [{ _siteID: config.src_site.id }, { _cssSiteID: config.src_site.css_id }]
+};
+
+let listInsert = [];
+let insertCount = 0;
+collFrom.find(query)
+.forEach
+(
+    msg =>
+    {
+        listInsert.push(msg);
+        if(listInsert.length == config.insert_count)
+        {
+            insertCount += listInsert.length;
+            print("Inserting " + insertCount);
+            collTo.insertMany(listInsert);
+            listInsert = [];
+        }
+    }
+);
+
+if(listInsert.length > 0)
+{
+    insertCount += listInsert.length;
+    print("Inserting " + insertCount);
+    collTo.insertMany(listInsert);
+    listInsert = [];
+}
+
+>>

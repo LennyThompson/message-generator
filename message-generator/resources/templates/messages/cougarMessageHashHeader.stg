@@ -1,0 +1,40 @@
+import "common.stg"
+
+
+declareMessageHash(message) ::= <<
+template\<>
+struct hash\<<message.name>\>
+{
+    size_t operator()(const <message.name>& <if(message.isEmptyMessage)>/*msgHash*/<else>msgHash<endif>)
+    {
+        size_t uHash = hash\<string>()("<message.name>");
+        <if(message.hasVariableLengthArrayMember)>
+        size_t nVariableArrayLength(msgHash.<message.variableLengthArrayMember.sizeMember.name>);
+        <endif>
+        <message.members:{member|<addMemberToHash(member, "msgHash", "uHash", "", "", "")><\n>}>
+        return uHash;
+    }
+};
+
+>>
+
+defineCougarMessageHash(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#pragma once
+
+#ifndef _TEST_BED_
+#include \<JTStandard.h>
+#include "JTProtocolStd.h"
+#endif
+
+#include \<functional>
+
+namespace std
+{
+    <schema.nonMessages:{message|<declareMessageHash(message)>}>
+}
+
+>>
+

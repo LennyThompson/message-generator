@@ -1,0 +1,69 @@
+import "common.stg"
+
+defineSwitchSiteIdCase(message, varName) ::= <<
+<if(message.hasDefine && message.hasSiteIdMember)>
+case <message.define.name>:
+    return reinterpret_cast\<<message.name>\>(<varName>.getData()).<message.siteIdMember.name>;
+<endif>
+>>
+
+declareAsLocalStatic(message) ::= <<
+<if(message.hasDefine)>
+static IMessageHelperPtr_t <message.upperName>_PTR;//(new <message.name>_Msg());
+<endif>
+>>
+
+addToSwitchCase(message) ::= <<
+<if(message.hasDefine)>
+case <message.name>_Msg::ID:
+    if(<message.upperName>_PTR.get() == nullptr)
+    {
+        <message.upperName>_PTR = IMessageHelperPtr_t(new <message.name>_Msg());
+    }
+    return <message.upperName>_PTR;
+<endif>
+>>
+
+insertMessageToMapAsClass(message, mapName) ::= <<
+<if(message.hasDefine)>
+<mapName>.insert
+(
+    std::make_pair(<message.define.value>, std::unique_ptr\<IMessageHelper>(new <message.name>_Msg()))
+);
+
+<endif>
+>>
+
+declareInitMessageMap(schema) ::= <<
+void initMessageMap(MessageMap_t& msgMap)
+{
+    <schema.messages:{message|<insertMessageToMapAsClass(message, "msgMap")>}>
+}
+>>
+
+defineCougarMessageGetterImpl(schema) ::= <<
+// ****THIS IS A CODE GENERATED FILE DO NOT EDIT****
+// Generated on <schema.generateDate>
+
+#include "<schema.headerName>"
+#include "<schema.helperHeaderName>"
+
+<schema.splitMessages:{message|<declareAsLocalStatic(message)>}>
+
+const IMessageHelperPtr_t& <schema.messageHelperName>(size_t nMsgId)
+{
+    switch(nMsgId)
+    {
+        <schema.splitMessages:{message|<addToSwitchCase(message)>}>
+        default:
+            break;
+    }
+<if(schema.hasNextMessageHelperName)>
+    return <schema.nextMessageHelperName>(nMsgId);
+<else>
+    return getUnknownCougarMessage(nMsgId);
+<endif>
+}
+
+>>
+
