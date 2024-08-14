@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
+using CougarMessage.Parser.MessageTypes.Interfaces;
 
-namespace Net.CougarMessage.Parser.MessageTypes
+namespace CougarMessage.Parser.MessageTypes
 {
     public class EnumDefinition : IEnum
     {

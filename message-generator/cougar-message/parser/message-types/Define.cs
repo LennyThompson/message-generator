@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
+using CougarMessage.Parser.MessageTypes.Interfaces;
 
-namespace Net.CougarMessage.Parser.MessageTypes
+namespace CougarMessage.Parser.MessageTypes
 {
     public class Define : IDefine
     {
@@ -17,63 +17,46 @@ namespace Net.CougarMessage.Parser.MessageTypes
             _numericValue = -1;
         }
 
-        public void SetName(string name)
+        public string Name
         {
-            _name = name;
+            get => _name;
+            set => _name = value;
         }
 
-        public void SetValue(string value)
+        public string Value
         {
-            _value = value;
+            get => _value;
+            set => _value = value;
         }
 
-        public string Name()
-        {
-            return _name;
-        }
+        public int NumericValue => IsNumeric ? _numericValue : 0;
 
-        public string Value()
+        public string BaseName
         {
-            return _value;
-        }
-
-        public int NumericValue()
-        {
-            return IsNumeric() ? _numericValue : 0;
-        }
-
-        public string BaseName()
-        {
-            if (_name.StartsWith("JTP_"))
-            {
-                return _name.Substring(4);
+            get 
+            { 
+                if (Name.StartsWith("JTP_"))
+                {
+                    return Name.Substring(4);
+                }
+                return Name;
             }
-            return _name;
         }
 
-        public bool IsNumeric()
-        {
-            return _numericValue > 0;
-        }
+        public bool IsNumeric => _numericValue > 0;
 
-        public bool IsExpression()
-        {
-            return false;
-        }
+        public bool IsExpression => false;
 
-        public bool IsString()
-        {
-            return false;
-        }
+        public bool IsString => false;
 
         public bool Evaluate(List<IDefine> defines)
         {
             if (!string.IsNullOrEmpty(_value))
             {
-                var defineFound = defines.FirstOrDefault(define => define.Name() == _value);
-                if (defineFound != null && defineFound.IsNumeric())
+                var defineFound = defines.FirstOrDefault(define => define.Name == _value);
+                if (defineFound != null && defineFound.IsNumeric)
                 {
-                    _numericValue = defineFound.NumericValue();
+                    _numericValue = defineFound.NumericValue;
                     return true;
                 }
             }

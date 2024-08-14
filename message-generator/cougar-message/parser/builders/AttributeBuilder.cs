@@ -1,16 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
-using Net.Cougar.Parser.DbTypes.Interfaces;
-using Net.CougarMessage.Parser.MessageTypes;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
-using Net.Interfaces;
+using Cougar.Parser.DbTypes.Interfaces;
+using CougarMessage.Parser.MessageTypes;
+using CougarMessage.Parser.MessageTypes.Interfaces;
+using Interfaces;
 
-namespace Net.CougarMessage.Parser.Builders
+namespace CougarMessage.Parser.Builders
 {
     public class AttributeBuilder : AttributeBuilderBase
     {
-        public AttributeBuilder(ParserObjectBuilder builderParent) : base(builderParent)
+        public AttributeBuilder(ParserObjectBuilder? builderParent) : base(builderParent)
         {
             m_attrBuild = new Attribute();
         }
@@ -65,7 +65,7 @@ namespace Net.CougarMessage.Parser.Builders
         public override bool OnComplete(ParserObjectBuilder builderChild)
         {
             m_attrBuild = ((AttributeBuilder)builderChild).m_attrBuild;
-            builderChild.SetUsed();
+            builderChild.Used = true;
             return base.OnComplete(builderChild);
         }
     }

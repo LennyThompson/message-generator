@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Net.CougarMessage.Parser.MessageTypes
+namespace CougarMessage.Parser.MessageTypes
 {
     public class ComponentAttribute : Attribute
     {

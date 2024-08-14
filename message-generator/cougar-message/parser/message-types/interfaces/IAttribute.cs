@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Net.CougarMessage.Parser.MessageTypes.Interfaces
+namespace CougarMessage.Parser.MessageTypes.Interfaces
 {
     public interface IAttribute
     {

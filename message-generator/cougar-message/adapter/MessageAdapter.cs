@@ -32,7 +32,7 @@ namespace CougarMessage.Adapter
         {
             m_messageAdapt = messageAdapt;
 
-            if (messageAdapt.Define().Name != null)
+            if (messageAdapt.Define.Name != null)
             {
                 m_defineAdapt = DefineAdapterFactory.CreateDefineAdapter(messageAdapt.Define());
             }
@@ -47,7 +47,7 @@ namespace CougarMessage.Adapter
 
         public string GetName()
         {
-            return m_messageAdapt.Name();
+            return m_messageAdapt.Name;
         }
 
         public string GetUpperName()
@@ -255,7 +255,7 @@ namespace CougarMessage.Adapter
         {
             Stack<IMember> stackMembers = new Stack<IMember>();
             return m_messageAdapt.FindTopMostMember(
-                    member => member.ShortFieldDescription().Contains(strDescription) || member.Name().CompareTo(strName) == 0 || member.StrippedName().CompareTo(strName) == 0,
+                    member => member.ShortFieldDescription().Contains(strDescription) || member.Name.CompareTo(strName) == 0 || member.StrippedName().CompareTo(strName) == 0,
                     stackMembers
                 );
         }
@@ -264,7 +264,7 @@ namespace CougarMessage.Adapter
         {
             Stack<MemberAdapter> stackMembers = new Stack<MemberAdapter>();
             if (FindTopMostMember(
-                    member => member.m_memberAdapt.ShortFieldDescription().Contains(strDescription) || member.m_memberAdapt.Name().CompareTo(strName) == 0 || member.m_memberAdapt.StrippedName().CompareTo(strName) == 0,
+                    member => member.m_memberAdapt.ShortFieldDescription().Contains(strDescription) || member.m_memberAdapt.Name.CompareTo(strName) == 0 || member.m_memberAdapt.StrippedName().CompareTo(strName) == 0,
                     stackMembers
                 ))
             {
@@ -298,7 +298,7 @@ namespace CougarMessage.Adapter
         {
             Stack<IMember> stackMembers = new Stack<IMember>();
             return m_messageAdapt.FindTopMostMember(
-                    member => member.Name().Contains("EGMSerialNumber"),
+                    member => member.Name.Contains("EGMSerialNumber"),
                     stackMembers
                 );
         }
@@ -307,7 +307,7 @@ namespace CougarMessage.Adapter
         {
             Stack<IMember> stackMembers = new Stack<IMember>();
             m_messageAdapt.FindTopMostMember(
-                    member => member.Name().Contains("EGMSerialNumber"),
+                    member => member.Name.Contains("EGMSerialNumber"),
                     stackMembers
                 );
             return stackMembers.Select(member => m_listMembers.FirstOrDefault(memberAdapter => memberAdapter.GetName().CompareTo(member.Name()) == 0)).ToList();
@@ -604,7 +604,7 @@ namespace CougarMessage.Adapter
                     var member = instance.Instance().Members()
                         .FirstOrDefault(member => 
                         {
-                            if (member.Name().CompareTo(path) == 0)
+                            if (member.Name.CompareTo(path) == 0)
                             {
                                 instance.SetInstance(member.MessageType());
                                 return true;
@@ -627,7 +627,7 @@ namespace CougarMessage.Adapter
                     return instance.Instance().Members()
                         .TakeWhile(member =>
                         {
-                            if (member.Name().CompareTo(path) != 0)
+                            if (member.Name.CompareTo(path) != 0)
                             {
                                 return true;
                             }
@@ -822,7 +822,7 @@ namespace CougarMessage.Adapter
                         {
                             public MessageAdapter GetGeneratedMessage() => message;
 
-                            public bool GetIsSameMessageAsGenerator() => message.m_messageAdapt.Name().CompareTo(m_messageAdapt.Name()) == 0;
+                            public bool GetIsSameMessageAsGenerator() => message.m_messageAdapt.Name.CompareTo(m_messageAdapt.Name()) == 0;
 
                             public List<ITraceMemberJsonAdapter> GetTraceMemberJsonPath()
                             {

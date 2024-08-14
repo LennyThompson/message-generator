@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Net.Cougar.Utils
+namespace Cougar.Utils
 {
     public class TableRule
     {

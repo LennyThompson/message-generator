@@ -1,8 +1,8 @@
 using System.Text.Json;
 using CougarMessage.Adapter;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
+using CougarMessage.Parser.MessageTypes.Interfaces;
 
-namespace Net.CougarMessage.Adapter
+namespace CougarMessage.Adapter
 {
     public class NonMessageAdapter : MessageAdapter
     {

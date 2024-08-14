@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 
-namespace Net.CougarMessage.Adapter
+namespace CougarMessage.Adapter
 {
     public class EnumAdapter
     {
@@ -18,7 +18,7 @@ namespace Net.CougarMessage.Adapter
 
             public string GetName()
             {
-                return _enumValue.Name();
+                return _enumValue.Name;
             }
 
             public int GetValue()
@@ -38,16 +38,16 @@ namespace Net.CougarMessage.Adapter
 
         public string GetName()
         {
-            return _enumAdapt.Name();
+            return _enumAdapt.Name;
         }
 
         public string GetShortName()
         {
-            if (_enumAdapt.Name()[0] == 'E')
+            if (_enumAdapt.Name[0] == 'E')
             {
-                return _enumAdapt.Name().Substring(1);
+                return _enumAdapt.Name.Substring(1);
             }
-            return _enumAdapt.Name();
+            return _enumAdapt.Name;
         }
 
         public List<EnumValueAdapter> GetValues()

@@ -2,18 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using Interfaces;
 
-namespace Net.CougarMessage.Parser.Builders
+namespace CougarMessage.Parser.Builders
 {
-    public class MessageSchemaBuilder : CougarMessageBuilderBase
+    public class MessageSchemaBuilder(ParserObjectBuilder? builderParent) : CougarMessageBuilderBase(builderParent)
     {
-        private MessageSchema _messageSchema;
+        private MessageSchema _messageSchema = new();
         private int _ordinal = 1;
-
-        public MessageSchemaBuilder(ParserObjectBuilder builderParent) : base(builderParent)
-        {
-            _messageSchema = new MessageSchema();
-        }
 
         public MessageSchema Schema()
         {
@@ -28,19 +24,19 @@ namespace Net.CougarMessage.Parser.Builders
                 {
                     _builderChildren.Add(builderChild);
                     _messageSchema.AddMessage(messageBuilder.Message());
-                    builderChild.SetUsed();
+                    builderChild.Used = true;
                 }
                 else if (builderChild is DefineBuilder defineBuilder)
                 {
                     _builderChildren.Add(builderChild);
                     _messageSchema.AddDefine(defineBuilder.GetDefine());
-                    builderChild.SetUsed();
+                    builderChild.Used = true;
                 }
                 else if (builderChild is EnumBuilder enumBuilder)
                 {
                     _builderChildren.Add(builderChild);
                     _messageSchema.AddEnum(enumBuilder.GetEnum());
-                    builderChild.SetUsed();
+                    builderChild.Used = true;
                 }
             }
             return base.OnComplete(builderChild);

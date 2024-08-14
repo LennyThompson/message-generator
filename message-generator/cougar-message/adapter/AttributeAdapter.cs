@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
+using CougarMessage.Parser.MessageTypes.Interfaces;
 
-namespace Net.CougarMessage.Adapter
+namespace CougarMessage.Adapter
 {
     public class AttributeAdapter
     {
@@ -17,7 +17,7 @@ namespace Net.CougarMessage.Adapter
 
         public string GetName()
         {
-            return _attrAdapt.Name();
+            return _attrAdapt.Name;
         }
 
         public List<string> GetValues()

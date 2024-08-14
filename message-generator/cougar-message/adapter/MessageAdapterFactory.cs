@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 
-namespace Net.CougarMessage.Adapter
+namespace CougarMessage.Adapter
 {
     public class MessageAdapterFactory
     {

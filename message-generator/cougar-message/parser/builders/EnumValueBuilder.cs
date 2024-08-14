@@ -1,14 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using CougarMessage.Parser.MessageTypes;
+using CougarMessage.Parser.MessageTypes.Interfaces;
+using Interfaces;
 
-namespace Net.CougarMessage.Parser.Builders
+namespace CougarMessage.Parser.Builders
 {
     public class EnumValueBuilder : CougarMessageBuilderBase
     {
         private EnumValue m_enumValueBuild;
 
-        protected EnumValueBuilder(ParserObjectBuilder builderParent, int nOrdinal)
+        public EnumValueBuilder(ParserObjectBuilder? builderParent, int nOrdinal)
             : base(builderParent)
         {
             m_enumValueBuild = new EnumValue(nOrdinal);
@@ -19,17 +22,17 @@ namespace Net.CougarMessage.Parser.Builders
             return m_enumValueBuild;
         }
 
-        public override void ExitEnumValueDefinition(CougarParser.EnumValueDefinitionContext ctx)
+        public override void ExitEnumValueDefinition(global::CougarParser.EnumValueDefinitionContext ctx)
         {
             OnComplete(this);
         }
 
-        public override void EnterEnumValueName(CougarParser.EnumValueNameContext ctx)
+        public override void EnterEnumValueName(global::CougarParser.EnumValueNameContext ctx)
         {
             m_enumValueBuild.SetName(ctx.GetText());
         }
 
-        public override void EnterEnumValue(CougarParser.EnumValueContext ctx)
+        public override void EnterEnumValue(global::CougarParser.EnumValueContext ctx)
         {
             string strVal = ctx.GetText();
             if (strVal.ToUpper().IndexOf("0X") == 0)
@@ -48,39 +51,6 @@ namespace Net.CougarMessage.Parser.Builders
             {
                 DoCompletion = (ISchemaBase sqlSchema) => { }
             };
-        }
-    }
-
-    public class ObjectCompletion
-    {
-        public Action<ISchemaBase> DoCompletion { get; set; }
-    }
-
-    // Interfaces and other classes are assumed to be defined elsewhere
-    public interface IEnumValue { }
-    public interface ISchemaBase { }
-    public interface ParserObjectBuilder { }
-    public class EnumValue : IEnumValue
-    {
-        public EnumValue(int ordinal) { }
-        public void SetName(string name) { }
-        public void SetValue(int value) { }
-    }
-    public abstract class CougarMessageBuilderBase
-    {
-        protected CougarMessageBuilderBase(ParserObjectBuilder builderParent) { }
-        protected void OnComplete(EnumValueBuilder builder) { }
-    }
-    public class CougarParser
-    {
-        public class EnumValueDefinitionContext { }
-        public class EnumValueNameContext
-        {
-            public string GetText() { return string.Empty; }
-        }
-        public class EnumValueContext
-        {
-            public string GetText() { return string.Empty; }
         }
     }
 }

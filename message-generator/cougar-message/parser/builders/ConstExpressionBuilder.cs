@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 
-namespace Net.CougarMessage.Parser.Builders
+namespace CougarMessage.Parser.Builders
 {
     public class ConstExpressionBuilder : CougarMessageBuilderBase
     {

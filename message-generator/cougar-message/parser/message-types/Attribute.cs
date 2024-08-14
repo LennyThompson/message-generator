@@ -1,29 +1,26 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CougarMessage.Parser.MessageTypes.Interfaces;
 
-namespace Net.CougarMessage.Parser.MessageTypes
+namespace CougarMessage.Parser.MessageTypes
 {
     public class Attribute : IAttribute
     {
-        protected string m_strName;
-        protected List<List<string>> m_listValues;
-        protected AttributeType m_attrType;
+        protected string m_strName = "";
+        protected List<List<string>> m_listValues = new List<List<string>>();
+        protected IAttribute.AttributeType m_attrType = IAttribute.AttributeType.Any;
 
-        public Attribute()
+        public string Name
         {
-            m_listValues = new List<List<string>>();
-            m_attrType = AttributeType.ANY;
+            get => m_strName;
+            set => m_strName = value;
         }
 
-        public void SetName(string strName)
+        public IAttribute.AttributeType Type
         {
-            m_strName = strName;
-        }
-
-        public void SetType(AttributeType attrType)
-        {
-            m_attrType = attrType;
+            get => m_attrType;
+            set => m_attrType = value;
         }
 
         public void AddValues(List<string> listValues)
@@ -31,19 +28,10 @@ namespace Net.CougarMessage.Parser.MessageTypes
             m_listValues.Add(new List<string>(listValues));
         }
 
-        public string Name()
+        public List<List<string>> Values
         {
-            return m_strName;
-        }
-
-        public List<List<string>> Values()
-        {
-            return m_listValues;
-        }
-
-        public AttributeType Type()
-        {
-            return m_attrType;
+            get => m_listValues;
+            set => m_listValues = value;
         }
 
         public virtual void AddValue(string name)

@@ -2,19 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using Net.Cougar.Parser.DbTypes;
-using Net.CougarMessage.Parser.MessageTypes;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
-using Net.Interfaces;
+using CougarMessage.Parser.MessageTypes;
+using CougarMessage.Parser.MessageTypes.Interfaces;
+using Interfaces;
 
-namespace Net.CougarMessage.Parser.Builders
+namespace CougarMessage.Parser.Builders
 {
     public class EnumBuilder : CougarMessageBuilderBase
     {
         private EnumDefinition _enumBuild;
         private int _valueOrdinal = 0;
 
-        public EnumBuilder(ParserObjectBuilder builderParent) : base(builderParent)
+        public EnumBuilder(ParserObjectBuilder? builderParent) : base(builderParent)
         {
             _enumBuild = new EnumDefinition();
         }
@@ -24,17 +23,17 @@ namespace Net.CougarMessage.Parser.Builders
             return _enumBuild;
         }
 
-        public override void ExitEnumDefinition(Net.CougarMessage.Grammar.CougarParser.EnumDefinitionContext ctx)
+        public override void ExitEnum_definition(CougarParser.Enum_definitionContext ctx)
         {
             OnComplete(this);
         }
 
-        public override void EnterEnumName(Net.CougarMessage.Grammar.CougarParser.EnumNameContext ctx)
+        public override void EnterEnum_name(CougarParser.Enum_nameContext ctx)
         {
             _enumBuild.SetName(ctx.GetText());
         }
 
-        public override void EnterEnumValueDefinition(Net.CougarMessage.Grammar.CougarParser.EnumValueDefinitionContext ctx)
+        public override void EnterEnum_value_definition(CougarParser.Enum_value_definitionContext ctx)
         {
             SetCurrentBuilder(new EnumValueBuilder(this, _valueOrdinal++));
         }
@@ -47,7 +46,7 @@ namespace Net.CougarMessage.Parser.Builders
                 {
                     _builderChildren.Add(builderChild);
                     _enumBuild.AddValue(((EnumValueBuilder)builderChild).GetValue());
-                    builderChild.SetUsed();
+                    builderChild.Used = true;
                 }
             }
             return base.OnComplete(builderChild);
@@ -65,11 +64,6 @@ namespace Net.CougarMessage.Parser.Builders
                 }
             };
         }
-    }
-
-    public class ObjectCompletion
-    {
-        public Action<ISchemaBase> DoCompletion { get; set; }
     }
 }
 

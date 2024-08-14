@@ -1,31 +1,31 @@
 using System.Collections.Generic;
 using System.Text.Json;
-using Net.CougarMessage.Parser.MessageTypes;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
-using Net.Interfaces;
+using CougarMessage.Parser.MessageTypes;
+using CougarMessage.Parser.MessageTypes.Interfaces;
+using Interfaces;
 
-namespace Net.CougarMessage.Parser.Builders
+namespace CougarMessage.Parser.Builders
 {
     public class FielddescAttributeBuilder : AttributeBuilderBase
     {
-        public FielddescAttributeBuilder(ParserObjectBuilder builderParent) : base(builderParent)
+        public FielddescAttributeBuilder(ParserObjectBuilder? builderParent) : base(builderParent)
         {
             m_attrBuild = new FielddescAttribute();
             m_attrBuild.SetName("fielddesc");
             m_attrBuild.SetType(IAttribute.AttributeType.FIELDDESC);
         }
 
-        public override void ExitFielddescAttribute(Net.CougarMessage.Grammar.CougarParser.FielddescAttributeContext ctx)
+        public override void ExitFielddescAttribute(CougarParser.FielddescAttributeContext ctx)
         {
             base.OnComplete(this);
         }
 
-        public override void EnterFielddescName(Net.CougarMessage.Grammar.CougarParser.FielddescNameContext ctx)
+        public override void EnterFielddescName(CougarParser.FielddescNameContext ctx)
         {
             ((FielddescAttribute)m_attrBuild).SetFieldName(ctx.GetText());
         }
 
-        public override void ExitFielddescDesc(Net.CougarMessage.Grammar.CougarParser.FielddescDescContext ctx)
+        public override void ExitFielddescDesc(CougarParser.FielddescDescContext ctx)
         {
             if (string.IsNullOrEmpty(((FielddescAttribute)m_attrBuild).FieldName()))
             {
@@ -33,59 +33,59 @@ namespace Net.CougarMessage.Parser.Builders
             }
         }
 
-        public override void EnterFielddescDetail(Net.CougarMessage.Grammar.CougarParser.FielddescDetailContext ctx)
+        public override void EnterFielddescDetail(CougarParser.FielddescDetailContext ctx)
         {
             m_listValues.Clear();
         }
 
-        public override void ExitFielddescDetail(Net.CougarMessage.Grammar.CougarParser.FielddescDetailContext ctx)
+        public override void ExitFielddescDetail(CougarParser.FielddescDetailContext ctx)
         {
             m_attrBuild.AddValues(m_listValues);
             m_listValues.Clear();
         }
 
-        public override void EnterFielddescWord(Net.CougarMessage.Grammar.CougarParser.FielddescWordContext ctx)
+        public override void EnterFielddescWord(CougarParser.FielddescWordContext ctx)
         {
             m_listValues.Add(ctx.GetText());
         }
 
-        public override void EnterFielddescNumeric(Net.CougarMessage.Grammar.CougarParser.FielddescNumericContext ctx)
+        public override void EnterFielddescNumeric(CougarParser.FielddescNumericContext ctx)
         {
             m_listValues.Add(ctx.GetText());
         }
 
-        public override void EnterFielddescHex(Net.CougarMessage.Grammar.CougarParser.FielddescHexContext ctx)
+        public override void EnterFielddescHex(CougarParser.FielddescHexContext ctx)
         {
             m_listValues.Add(ctx.GetText());
         }
 
-        public override void EnterFielddescExpr(Net.CougarMessage.Grammar.CougarParser.FielddescExprContext ctx)
+        public override void EnterFielddescExpr(CougarParser.FielddescExprContext ctx)
         {
             m_listValues.Add(ctx.GetText());
         }
 
-        public override void EnterFielddescPunctuation(Net.CougarMessage.Grammar.CougarParser.FielddescPunctuationContext ctx)
+        public override void EnterFielddescPunctuation(CougarParser.FielddescPunctuationContext ctx)
         {
         }
 
-        public override void EnterFielddescParens(Net.CougarMessage.Grammar.CougarParser.FielddescParensContext ctx)
+        public override void EnterFielddescParens(CougarParser.FielddescParensContext ctx)
         {
             m_attrBuild.AddValues(m_listValues);
             m_listValues.Clear();
         }
 
-        public override void ExitFielddescParens(Net.CougarMessage.Grammar.CougarParser.FielddescParensContext ctx)
+        public override void ExitFielddescParens(CougarParser.FielddescParensContext ctx)
         {
             m_attrBuild.AddValues(m_listValues);
             m_listValues.Clear();
         }
 
-        public override void EnterFielddescMoney(Net.CougarMessage.Grammar.CougarParser.FielddescMoneyContext ctx)
+        public override void EnterFielddescMoney(CougarParser.FielddescMoneyContext ctx)
         {
             m_listValues.Add(ctx.GetText());
         }
 
-        public override void EnterFielddescQuotedString(Net.CougarMessage.Grammar.CougarParser.FielddescQuotedStringContext ctx)
+        public override void EnterFielddescQuotedString(CougarParser.FielddescQuotedStringContext ctx)
         {
             m_listValues.Add(ctx.GetText());
         }

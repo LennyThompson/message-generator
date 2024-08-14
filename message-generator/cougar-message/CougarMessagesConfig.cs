@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace Net.CougarMessage
+namespace CougarMessage
 {
     public class CougarMessagesConfig : JsonConverter<CougarMessagesConfig>
     {

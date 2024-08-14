@@ -3,16 +3,59 @@ using System.Collections.Generic;
 using System.IO;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
-using net.cougar_message.parser.builders;
-using net.cougar_message.parser.builders.interfaces;
-using net.cougar_message.parser.message_types.interfaces;
-using net.interfaces;
+using CougarMessage.Parser.Builders;
+using CougarMessage.Parser.Builders.Interfaces;
+using Interfaces;
 
-namespace net.cougar_message.parser
+namespace CougarMessages.Parser
 {
-    public class CougarMessageListener : net.cougar_message.grammar.CougarParserBaseListener
+    class CougarMessageBuilderFirst(ParserObjectBuilder? builderParent, Stack<CougarMessageObjectBuilder> stackBuilders)
+        : CougarMessageBuilderBase(builderParent)
     {
-        private Stack<CougarMessageObjectBuilder> m_stackBuilders;
+        public override bool Used()
+        {
+            return true;
+        }
+
+        public override void SetUsed()
+        {
+        }
+
+        public override bool OnComplete(ParserObjectBuilder builderChild)
+        {
+            if (stackBuilders.Count == 1)
+            {
+                throw new InvalidOperationException("Builder stack will be emptied by pop!");
+            }
+
+            stackBuilders.Pop();
+            return true;
+        }
+        
+        public override ObjectCompletion Finalise(Stack<ParserObjectBuilder> stackObjs)
+        {
+            return null;
+        }
+
+        public override void SetCurrentBuilder(ParserObjectBuilder builderCurrent)
+        {
+            stackBuilders.Push((CougarMessageObjectBuilder) builderCurrent);
+        }
+
+        public override bool OnSetChildContext(String strContext, String cntxtType)
+        {
+            return false;
+        }
+
+        public override void AddModifiers(ParserObjectBuilder builderTarget)
+        {
+
+        }
+
+    }
+    public class CougarMessageListener : CougarParserBaseListener
+    {
+        protected Stack<CougarMessageObjectBuilder> m_stackBuilders;
 
         public static CougarMessageListener RunGrammar(TextReader readerFrom, CougarMessageListener msgListener)
         {
@@ -20,15 +63,14 @@ namespace net.cougar_message.parser
             {
                 msgListener = new CougarMessageListener();
             }
+            AntlrInputStream inputStream = new AntlrInputStream(readerFrom);
+            CougarLexer lexer = new CougarLexer(inputStream);
+            CommonTokenStream tokenStream = new CommonTokenStream(lexer);
+            CougarParser cougarParser = new CougarParser(tokenStream);
 
-            var input = CharStreams.fromReader(readerFrom);
-            var lexer = new net.cougar_message.grammar.CougarLexer(input);
-            var tokenStream = new CommonTokenStream(lexer);
-            var parser = new net.cougar_message.grammar.CougarParser(tokenStream);
-
-            var walker = new ParseTreeWalker();
-            parser.BuildParseTree = true;
-            var parseTree = parser.cougar_messages();
+            ParseTreeWalker walker = new ParseTreeWalker();
+            cougarParser.BuildParseTree = true;
+            CougarParser.Cougar_messagesContext parseTree = cougarParser.cougar_messages();
 
             walker.Walk(msgListener, parseTree);
 
@@ -40,27 +82,8 @@ namespace net.cougar_message.parser
             m_stackBuilders = new Stack<CougarMessageObjectBuilder>();
             m_stackBuilders.Push(
                 new MessageSchemaBuilder(
-                    new CougarMessageBuilderBase(null)
+                    new CougarMessageBuilderFirst(null, m_stackBuilders)
                     {
-                        Used = true,
-                        SetUsed = () => { },
-                        OnComplete = (builderChild) =>
-                        {
-                            if (m_stackBuilders.Count == 1)
-                            {
-                                throw new InvalidOperationException("Builder stack will be emptied by pop!");
-                            }
-
-                            m_stackBuilders.Pop();
-                            return true;
-                        },
-                        Finalise = (stackObjs) => null,
-                        SetCurrentBuilder = (builderCurrent) =>
-                        {
-                            m_stackBuilders.Push((CougarMessageObjectBuilder)builderCurrent);
-                        },
-                        OnSetChildContext = (strContext, cntxtType) => false,
-                        AddModifiers = (builderTarget) => { }
                     }
                 )
             );
@@ -71,467 +94,467 @@ namespace net.cougar_message.parser
             return ((MessageSchemaBuilder)m_stackBuilders.Peek()).Schema();
         }
 
-        public override void EnterCougar_messages(net.cougar_message.grammar.CougarParser.Cougar_messagesContext ctx)
+        public override void EnterCougar_messages(CougarParser.Cougar_messagesContext ctx)
         {
             m_stackBuilders.Peek().EnterCougar_messages(ctx);
         }
 
-        public override void ExitCougar_messages(net.cougar_message.grammar.CougarParser.Cougar_messagesContext ctx)
+        public override void ExitCougar_messages(CougarParser.Cougar_messagesContext ctx)
         {
             m_stackBuilders.Peek().ExitCougar_messages(ctx);
         }
 
-        public override void EnterMessage_body(net.cougar_message.grammar.CougarParser.Message_bodyContext ctx)
+        public override void EnterMessage_body(CougarParser.Message_bodyContext ctx)
         {
             m_stackBuilders.Peek().EnterMessage_body(ctx);
         }
 
-        public override void ExitMessage_body(net.cougar_message.grammar.CougarParser.Message_bodyContext ctx)
+        public override void ExitMessage_body(CougarParser.Message_bodyContext ctx)
         {
             m_stackBuilders.Peek().ExitMessage_body(ctx);
         }
 
-        public override void EnterEnum_definition(net.cougar_message.grammar.CougarParser.Enum_definitionContext ctx)
+        public override void EnterEnum_definition(CougarParser.Enum_definitionContext ctx)
         {
             m_stackBuilders.Peek().EnterEnum_definition(ctx);
         }
 
-        public override void ExitEnum_definition(net.cougar_message.grammar.CougarParser.Enum_definitionContext ctx)
+        public override void ExitEnum_definition(CougarParser.Enum_definitionContext ctx)
         {
             m_stackBuilders.Peek().ExitEnum_definition(ctx);
         }
 
-        public override void EnterEnum_name(net.cougar_message.grammar.CougarParser.Enum_nameContext ctx)
+        public override void EnterEnum_name(CougarParser.Enum_nameContext ctx)
         {
             m_stackBuilders.Peek().EnterEnum_name(ctx);
         }
 
-        public override void ExitEnum_name(net.cougar_message.grammar.CougarParser.Enum_nameContext ctx)
+        public override void ExitEnum_name(CougarParser.Enum_nameContext ctx)
         {
             m_stackBuilders.Peek().ExitEnum_name(ctx);
         }
 
         public override void EnterEnum_value_definition(
-            net.cougar_message.grammar.CougarParser.Enum_value_definitionContext ctx)
+            CougarParser.Enum_value_definitionContext ctx)
         {
             m_stackBuilders.Peek().EnterEnum_value_definition(ctx);
         }
 
         public override void ExitEnum_value_definition(
-            net.cougar_message.grammar.CougarParser.Enum_value_definitionContext ctx)
+            CougarParser.Enum_value_definitionContext ctx)
         {
             m_stackBuilders.Peek().ExitEnum_value_definition(ctx);
         }
 
-        public override void EnterEnum_value_name(net.cougar_message.grammar.CougarParser.Enum_value_nameContext ctx)
+        public override void EnterEnum_value_name(CougarParser.Enum_value_nameContext ctx)
         {
             m_stackBuilders.Peek().EnterEnum_value_name(ctx);
         }
 
-        public override void ExitEnum_value_name(net.cougar_message.grammar.CougarParser.Enum_value_nameContext ctx)
+        public override void ExitEnum_value_name(CougarParser.Enum_value_nameContext ctx)
         {
             m_stackBuilders.Peek().ExitEnum_value_name(ctx);
         }
 
-        public override void EnterEnum_value(net.cougar_message.grammar.CougarParser.Enum_valueContext ctx)
+        public override void EnterEnum_value(CougarParser.Enum_valueContext ctx)
         {
             m_stackBuilders.Peek().EnterEnum_value(ctx);
         }
 
-        public override void ExitEnum_value(net.cougar_message.grammar.CougarParser.Enum_valueContext ctx)
+        public override void ExitEnum_value(CougarParser.Enum_valueContext ctx)
         {
             m_stackBuilders.Peek().ExitEnum_value(ctx);
         }
 
-        public override void EnterAttribute(net.cougar_message.grammar.CougarParser.AttributeContext ctx)
+        public override void EnterAttribute(CougarParser.AttributeContext ctx)
         {
             m_stackBuilders.Peek().EnterAttribute(ctx);
         }
 
-        public override void ExitAttribute(net.cougar_message.grammar.CougarParser.AttributeContext ctx)
+        public override void ExitAttribute(CougarParser.AttributeContext ctx)
         {
             m_stackBuilders.Peek().ExitAttribute(ctx);
         }
 
-        public override void EnterMember(net.cougar_message.grammar.CougarParser.MemberContext ctx)
+        public override void EnterMember(CougarParser.MemberContext ctx)
         {
             m_stackBuilders.Peek().EnterMember(ctx);
         }
 
-        public override void ExitMember(net.cougar_message.grammar.CougarParser.MemberContext ctx)
+        public override void ExitMember(CougarParser.MemberContext ctx)
         {
             m_stackBuilders.Peek().ExitMember(ctx);
         }
 
-        public override void EnterAttibute_key(net.cougar_message.grammar.CougarParser.Attibute_keyContext ctx)
+        public override void EnterAttibute_key(CougarParser.Attibute_keyContext ctx)
         {
             m_stackBuilders.Peek().EnterAttibute_key(ctx);
         }
 
-        public override void ExitAttibute_key(net.cougar_message.grammar.CougarParser.Attibute_keyContext ctx)
+        public override void ExitAttibute_key(CougarParser.Attibute_keyContext ctx)
         {
             m_stackBuilders.Peek().ExitAttibute_key(ctx);
         }
 
-        public override void EnterAttribute_value(net.cougar_message.grammar.CougarParser.Attribute_valueContext ctx)
+        public override void EnterAttribute_value(CougarParser.Attribute_valueContext ctx)
         {
             m_stackBuilders.Peek().EnterAttribute_value(ctx);
         }
 
-        public override void ExitAttribute_value(net.cougar_message.grammar.CougarParser.Attribute_valueContext ctx)
+        public override void ExitAttribute_value(CougarParser.Attribute_valueContext ctx)
         {
             m_stackBuilders.Peek().ExitAttribute_value(ctx);
         }
 
-        public override void EnterMember_name(net.cougar_message.grammar.CougarParser.Member_nameContext ctx)
+        public override void EnterMember_name(CougarParser.Member_nameContext ctx)
         {
             m_stackBuilders.Peek().EnterMember_name(ctx);
         }
 
-        public override void ExitMember_name(net.cougar_message.grammar.CougarParser.Member_nameContext ctx)
+        public override void ExitMember_name(CougarParser.Member_nameContext ctx)
         {
             m_stackBuilders.Peek().ExitMember_name(ctx);
         }
 
-        public override void EnterType_name(net.cougar_message.grammar.CougarParser.Type_nameContext ctx)
+        public override void EnterType_name(CougarParser.Type_nameContext ctx)
         {
             m_stackBuilders.Peek().EnterType_name(ctx);
         }
 
-        public override void ExitType_name(net.cougar_message.grammar.CougarParser.Type_nameContext ctx)
+        public override void ExitType_name(CougarParser.Type_nameContext ctx)
         {
             m_stackBuilders.Peek().ExitType_name(ctx);
         }
 
-        public override void EnterMessage_name(net.cougar_message.grammar.CougarParser.Message_nameContext ctx)
+        public override void EnterMessage_name(CougarParser.Message_nameContext ctx)
         {
             m_stackBuilders.Peek().EnterMessage_name(ctx);
         }
 
-        public override void ExitMessage_name(net.cougar_message.grammar.CougarParser.Message_nameContext ctx)
+        public override void ExitMessage_name(CougarParser.Message_nameContext ctx)
         {
             m_stackBuilders.Peek().ExitMessage_name(ctx);
         }
 
-        public override void EnterConst_value(net.cougar_message.grammar.CougarParser.Const_valueContext ctx)
+        public override void EnterConst_value(CougarParser.Const_valueContext ctx)
         {
             m_stackBuilders.Peek().EnterConst_value(ctx);
         }
 
-        public override void ExitConst_value(net.cougar_message.grammar.CougarParser.Const_valueContext ctx)
+        public override void ExitConst_value(CougarParser.Const_valueContext ctx)
         {
             m_stackBuilders.Peek().ExitConst_value(ctx);
         }
 
-        public override void EnterConst_expression(net.cougar_message.grammar.CougarParser.Const_expressionContext ctx)
+        public override void EnterConst_expression(CougarParser.Const_expressionContext ctx)
         {
             m_stackBuilders.Peek().EnterConst_expression(ctx);
         }
 
-        public override void ExitConst_expression(net.cougar_message.grammar.CougarParser.Const_expressionContext ctx)
+        public override void ExitConst_expression(CougarParser.Const_expressionContext ctx)
         {
             m_stackBuilders.Peek().ExitConst_expression(ctx);
         }
 
         public override void EnterExpression_define(
-            net.cougar_message.grammar.CougarParser.Expression_defineContext ctx)
+            CougarParser.Expression_defineContext ctx)
         {
             m_stackBuilders.Peek().EnterExpression_define(ctx);
         }
 
-        public override void ExitExpression_define(net.cougar_message.grammar.CougarParser.Expression_defineContext ctx)
+        public override void ExitExpression_define(CougarParser.Expression_defineContext ctx)
         {
             m_stackBuilders.Peek().ExitExpression_define(ctx);
         }
 
         public override void EnterExpression_operator(
-            net.cougar_message.grammar.CougarParser.Expression_operatorContext ctx)
+            CougarParser.Expression_operatorContext ctx)
         {
             m_stackBuilders.Peek().EnterExpression_operator(ctx);
         }
 
         public override void ExitExpression_operator(
-            net.cougar_message.grammar.CougarParser.Expression_operatorContext ctx)
+            CougarParser.Expression_operatorContext ctx)
         {
             m_stackBuilders.Peek().ExitExpression_operator(ctx);
         }
 
         public override void EnterConst_numeric_value(
-            net.cougar_message.grammar.CougarParser.Const_numeric_valueContext ctx)
+            CougarParser.Const_numeric_valueContext ctx)
         {
             m_stackBuilders.Peek().EnterConst_numeric_value(ctx);
         }
 
         public override void ExitConst_numeric_value(
-            net.cougar_message.grammar.CougarParser.Const_numeric_valueContext ctx)
+            CougarParser.Const_numeric_valueContext ctx)
         {
             m_stackBuilders.Peek().ExitConst_numeric_value(ctx);
         }
 
         public override void EnterAttribute_extension(
-            net.cougar_message.grammar.CougarParser.Attribute_extensionContext ctx)
+            CougarParser.Attribute_extensionContext ctx)
         {
             m_stackBuilders.Peek().EnterAttribute_extension(ctx);
         }
 
         public override void ExitAttribute_extension(
-            net.cougar_message.grammar.CougarParser.Attribute_extensionContext ctx)
+            CougarParser.Attribute_extensionContext ctx)
         {
             m_stackBuilders.Peek().ExitAttribute_extension(ctx);
         }
 
         public override void EnterAttribute_extension_content(
-            net.cougar_message.grammar.CougarParser.Attribute_extension_contentContext ctx)
+            CougarParser.Attribute_extension_contentContext ctx)
         {
             m_stackBuilders.Peek().EnterAttribute_extension_content(ctx);
         }
 
         public override void ExitAttribute_extension_content(
-            net.cougar_message.grammar.CougarParser.Attribute_extension_contentContext ctx)
+            CougarParser.Attribute_extension_contentContext ctx)
         {
             m_stackBuilders.Peek().ExitAttribute_extension_content(ctx);
         }
 
         public override void EnterAttribute_extension_content_value(
-            net.cougar_message.grammar.CougarParser.Attribute_extension_content_valueContext ctx)
+            CougarParser.Attribute_extension_content_valueContext ctx)
         {
             m_stackBuilders.Peek().EnterAttribute_extension_content_value(ctx);
         }
 
         public override void ExitAttribute_extension_content_value(
-            net.cougar_message.grammar.CougarParser.Attribute_extension_content_valueContext ctx)
+            CougarParser.Attribute_extension_content_valueContext ctx)
         {
             m_stackBuilders.Peek().ExitAttribute_extension_content_value(ctx);
         }
 
         public override void EnterAttribute_extension_parenthesized_value(
-            net.cougar_message.grammar.CougarParser.Attribute_extension_parenthesized_valueContext ctx)
+            CougarParser.Attribute_extension_parenthesized_valueContext ctx)
         {
             m_stackBuilders.Peek().EnterAttribute_extension_parenthesized_value(ctx);
         }
 
         public override void ExitAttribute_extension_parenthesized_value(
-            net.cougar_message.grammar.CougarParser.Attribute_extension_parenthesized_valueContext ctx)
+            CougarParser.Attribute_extension_parenthesized_valueContext ctx)
         {
             m_stackBuilders.Peek().ExitAttribute_extension_parenthesized_value(ctx);
         }
 
         public override void EnterParenthesized_value(
-            net.cougar_message.grammar.CougarParser.Parenthesized_valueContext ctx)
+            CougarParser.Parenthesized_valueContext ctx)
         {
             m_stackBuilders.Peek().EnterParenthesized_value(ctx);
         }
 
         public override void ExitParenthesized_value(
-            net.cougar_message.grammar.CougarParser.Parenthesized_valueContext ctx)
+            CougarParser.Parenthesized_valueContext ctx)
         {
             m_stackBuilders.Peek().ExitParenthesized_value(ctx);
         }
 
         public override void EnterPart_attribute_value(
-            net.cougar_message.grammar.CougarParser.Part_attribute_valueContext ctx)
+            CougarParser.Part_attribute_valueContext ctx)
         {
             m_stackBuilders.Peek().EnterPart_attribute_value(ctx);
         }
 
         public override void ExitPart_attribute_value(
-            net.cougar_message.grammar.CougarParser.Part_attribute_valueContext ctx)
+            CougarParser.Part_attribute_valueContext ctx)
         {
             m_stackBuilders.Peek().ExitPart_attribute_value(ctx);
         }
 
-        public override void EnterMacro_block(net.cougar_message.grammar.CougarParser.Macro_blockContext ctx)
+        public override void EnterMacro_block(CougarParser.Macro_blockContext ctx)
         {
             m_stackBuilders.Peek().EnterMacro_block(ctx);
         }
 
-        public override void ExitMacro_block(net.cougar_message.grammar.CougarParser.Macro_blockContext ctx)
+        public override void ExitMacro_block(CougarParser.Macro_blockContext ctx)
         {
             m_stackBuilders.Peek().ExitMacro_block(ctx);
         }
 
-        public override void EnterMacro(net.cougar_message.grammar.CougarParser.MacroContext ctx)
+        public override void EnterMacro(CougarParser.MacroContext ctx)
         {
             m_stackBuilders.Peek().EnterMacro(ctx);
         }
 
-        public override void ExitMacro(net.cougar_message.grammar.CougarParser.MacroContext ctx)
+        public override void ExitMacro(CougarParser.MacroContext ctx)
         {
             m_stackBuilders.Peek().ExitMacro(ctx);
         }
 
-        public override void EnterMacro_define(net.cougar_message.grammar.CougarParser.Macro_defineContext ctx)
+        public override void EnterMacro_define(CougarParser.Macro_defineContext ctx)
         {
             m_stackBuilders.Peek().EnterMacro_define(ctx);
         }
 
-        public override void ExitMacro_define(net.cougar_message.grammar.CougarParser.Macro_defineContext ctx)
+        public override void ExitMacro_define(CougarParser.Macro_defineContext ctx)
         {
             m_stackBuilders.Peek().ExitMacro_define(ctx);
         }
 
-        public override void EnterDefine_name(net.cougar_message.grammar.CougarParser.Define_nameContext ctx)
+        public override void EnterDefine_name(CougarParser.Define_nameContext ctx)
         {
             m_stackBuilders.Peek().EnterDefine_name(ctx);
         }
 
-        public override void ExitDefine_name(net.cougar_message.grammar.CougarParser.Define_nameContext ctx)
+        public override void ExitDefine_name(CougarParser.Define_nameContext ctx)
         {
             m_stackBuilders.Peek().ExitDefine_name(ctx);
         }
 
-        public override void EnterDefine_value(net.cougar_message.grammar.CougarParser.Define_valueContext ctx)
+        public override void EnterDefine_value(CougarParser.Define_valueContext ctx)
         {
             m_stackBuilders.Peek().EnterDefine_value(ctx);
         }
 
-        public override void ExitDefine_value(net.cougar_message.grammar.CougarParser.Define_valueContext ctx)
+        public override void ExitDefine_value(CougarParser.Define_valueContext ctx)
         {
             m_stackBuilders.Peek().ExitDefine_value(ctx);
         }
 
-        public override void EnterNumeric_value(net.cougar_message.grammar.CougarParser.Numeric_valueContext ctx)
+        public override void EnterNumeric_value(CougarParser.Numeric_valueContext ctx)
         {
             m_stackBuilders.Peek().EnterNumeric_value(ctx);
         }
 
-        public override void ExitNumeric_value(net.cougar_message.grammar.CougarParser.Numeric_valueContext ctx)
+        public override void ExitNumeric_value(CougarParser.Numeric_valueContext ctx)
         {
             m_stackBuilders.Peek().ExitNumeric_value(ctx);
         }
 
-        public override void EnterMacro_expr(net.cougar_message.grammar.CougarParser.Macro_exprContext ctx)
+        public override void EnterMacro_expr(CougarParser.Macro_exprContext ctx)
         {
             m_stackBuilders.Peek().EnterMacro_expr(ctx);
         }
 
-        public override void ExitMacro_expr(net.cougar_message.grammar.CougarParser.Macro_exprContext ctx)
+        public override void ExitMacro_expr(CougarParser.Macro_exprContext ctx)
         {
             m_stackBuilders.Peek().ExitMacro_expr(ctx);
         }
 
-        public override void EnterMacro_name(net.cougar_message.grammar.CougarParser.Macro_nameContext ctx)
+        public override void EnterMacro_name(CougarParser.Macro_nameContext ctx)
         {
             m_stackBuilders.Peek().EnterMacro_name(ctx);
         }
 
-        public override void EnterQuoted_string(net.cougar_message.grammar.CougarParser.Quoted_stringContext ctx)
+        public override void EnterQuoted_string(CougarParser.Quoted_stringContext ctx)
         {
             m_stackBuilders.Peek().EnterQuoted_string(ctx);
         }
 
-        public override void EnterMacro_include(net.cougar_message.grammar.CougarParser.Macro_includeContext ctx)
+        public override void EnterMacro_include(CougarParser.Macro_includeContext ctx)
         {
             m_stackBuilders.Peek().EnterMacro_include(ctx);
         }
 
-        public override void ExitMacro_include(net.cougar_message.grammar.CougarParser.Macro_includeContext ctx)
+        public override void ExitMacro_include(CougarParser.Macro_includeContext ctx)
         {
             m_stackBuilders.Peek().ExitMacro_include(ctx);
         }
 
-        public override void EnterInclude_name(net.cougar_message.grammar.CougarParser.Include_nameContext ctx)
+        public override void EnterInclude_name(CougarParser.Include_nameContext ctx)
         {
             m_stackBuilders.Peek().EnterInclude_name(ctx);
         }
 
-        public override void ExitInclude_name(net.cougar_message.grammar.CougarParser.Include_nameContext ctx)
+        public override void ExitInclude_name(CougarParser.Include_nameContext ctx)
         {
             m_stackBuilders.Peek().ExitInclude_name(ctx);
         }
 
-        public override void EnterMacro_ifndef(net.cougar_message.grammar.CougarParser.Macro_ifndefContext ctx)
+        public override void EnterMacro_ifndef(CougarParser.Macro_ifndefContext ctx)
         {
             m_stackBuilders.Peek().EnterMacro_ifndef(ctx);
         }
 
-        public override void ExitMacro_ifndef(net.cougar_message.grammar.CougarParser.Macro_ifndefContext ctx)
+        public override void ExitMacro_ifndef(CougarParser.Macro_ifndefContext ctx)
         {
             m_stackBuilders.Peek().ExitMacro_ifndef(ctx);
         }
 
-        public override void EnterMacro_if(net.cougar_message.grammar.CougarParser.Macro_ifContext ctx)
+        public override void EnterMacro_if(CougarParser.Macro_ifContext ctx)
         {
             m_stackBuilders.Peek().EnterMacro_if(ctx);
         }
 
-        public override void ExitMacro_if(net.cougar_message.grammar.CougarParser.Macro_ifContext ctx)
+        public override void ExitMacro_if(CougarParser.Macro_ifContext ctx)
         {
             m_stackBuilders.Peek().ExitMacro_if(ctx);
         }
 
-        public override void EnterMacro_clause(net.cougar_message.grammar.CougarParser.Macro_clauseContext ctx)
+        public override void EnterMacro_clause(CougarParser.Macro_clauseContext ctx)
         {
             m_stackBuilders.Peek().EnterMacro_clause(ctx);
         }
 
-        public override void ExitMacro_clause(net.cougar_message.grammar.CougarParser.Macro_clauseContext ctx)
+        public override void ExitMacro_clause(CougarParser.Macro_clauseContext ctx)
         {
             m_stackBuilders.Peek().ExitMacro_clause(ctx);
         }
 
-        public override void EnterMacro_test(net.cougar_message.grammar.CougarParser.Macro_testContext ctx)
+        public override void EnterMacro_test(CougarParser.Macro_testContext ctx)
         {
             m_stackBuilders.Peek().EnterMacro_test(ctx);
         }
 
-        public override void ExitMacro_test(net.cougar_message.grammar.CougarParser.Macro_testContext ctx)
+        public override void ExitMacro_test(CougarParser.Macro_testContext ctx)
         {
             m_stackBuilders.Peek().ExitMacro_test(ctx);
         }
 
-        public override void EnterMacro_endif(net.cougar_message.grammar.CougarParser.Macro_endifContext ctx)
+        public override void EnterMacro_endif(CougarParser.Macro_endifContext ctx)
         {
             m_stackBuilders.Peek().EnterMacro_endif(ctx);
         }
 
-        public override void ExitMacro_endif(net.cougar_message.grammar.CougarParser.Macro_endifContext ctx)
+        public override void ExitMacro_endif(CougarParser.Macro_endifContext ctx)
         {
             m_stackBuilders.Peek().ExitMacro_endif(ctx);
         }
 
-        public override void EnterMacro_pragma(net.cougar_message.grammar.CougarParser.Macro_pragmaContext ctx)
+        public override void EnterMacro_pragma(CougarParser.Macro_pragmaContext ctx)
         {
             m_stackBuilders.Peek().EnterMacro_pragma(ctx);
         }
 
-        public override void ExitMacro_pragma(net.cougar_message.grammar.CougarParser.Macro_pragmaContext ctx)
+        public override void ExitMacro_pragma(CougarParser.Macro_pragmaContext ctx)
         {
             m_stackBuilders.Peek().ExitMacro_pragma(ctx);
         }
 
-        public override void EnterPragma_name(net.cougar_message.grammar.CougarParser.Pragma_nameContext ctx)
+        public override void EnterPragma_name(CougarParser.Pragma_nameContext ctx)
         {
             m_stackBuilders.Peek().EnterPragma_name(ctx);
         }
 
-        public override void ExitPragma_name(net.cougar_message.grammar.CougarParser.Pragma_nameContext ctx)
+        public override void ExitPragma_name(CougarParser.Pragma_nameContext ctx)
         {
             m_stackBuilders.Peek().ExitPragma_name(ctx);
         }
 
-        public override void EnterPragma_type(net.cougar_message.grammar.CougarParser.Pragma_typeContext ctx)
+        public override void EnterPragma_type(CougarParser.Pragma_typeContext ctx)
         {
             m_stackBuilders.Peek().EnterPragma_type(ctx);
         }
 
-        public override void ExitPragma_type(net.cougar_message.grammar.CougarParser.Pragma_typeContext ctx)
+        public override void ExitPragma_type(CougarParser.Pragma_typeContext ctx)
         {
             m_stackBuilders.Peek().ExitPragma_type(ctx);
         }
 
-        public override void EnterArray_decl(net.cougar_message.grammar.CougarParser.Array_declContext ctx)
+        public override void EnterArray_decl(CougarParser.Array_declContext ctx)
         {
             m_stackBuilders.Peek().EnterArray_decl(ctx);
         }
 
-        public override void ExitArray_decl(net.cougar_message.grammar.CougarParser.Array_declContext ctx)
+        public override void ExitArray_decl(CougarParser.Array_declContext ctx)
         {
             m_stackBuilders.Peek().ExitArray_decl(ctx);
         }
 
         public override void EnterDescription_attribute(
-            net.cougar_message.grammar.CougarParser.Description_attributeContext ctx)
+            CougarParser.Description_attributeContext ctx)
         {
             m_stackBuilders.Peek().EnterDescription_attribute(ctx);
         }

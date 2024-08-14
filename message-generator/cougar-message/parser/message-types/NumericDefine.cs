@@ -1,8 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
+using CougarMessage.Parser.MessageTypes.Interfaces;
 
-namespace Net.CougarMessage.Parser.MessageTypes
+namespace CougarMessage.Parser.MessageTypes
 {
     public class NumericDefine : Define
     {

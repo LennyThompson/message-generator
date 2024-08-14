@@ -53,7 +53,7 @@ namespace CougarMessage.Adapter
 
         public string GetName()
         {
-            return m_memberAdapt.Name();
+            return m_memberAdapt.Name;
         }
 
         public string GetType()

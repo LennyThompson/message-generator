@@ -1,7 +1,7 @@
 using System;
 using System.Text.Json;
-using Net.CougarMessage.Parser.MessageTypes;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
+using CougarMessage.Parser.MessageTypes;
+using CougarMessage.Parser.MessageTypes.Interfaces;
 
 namespace CougarMessage.Parser.MessageTypes
 {

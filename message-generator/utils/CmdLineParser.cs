@@ -80,7 +80,7 @@ namespace Cougar.Utils
                     }
                     return new CmdLineArg("ERROR", arg);
                 })
-                .ToDictionary(arg => arg.Name(), arg => arg);
+                .ToDictionary(arg => arg.Name, arg => arg);
         }
 
         /// <summary>

@@ -1,14 +1,14 @@
 using System.Collections.Generic;
 using System.Text.Json;
-using Net.CougarMessage.Parser.MessageTypes;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
-using Net.Interfaces;
+using CougarMessage.Parser.MessageTypes;
+using CougarMessage.Parser.MessageTypes.Interfaces;
+using Interfaces;
 
-namespace Net.CougarMessage.Parser.Builders
+namespace CougarMessage.Parser.Builders
 {
     public class GeneratorAttributeBuilder : AttributeBuilderBase
     {
-        public GeneratorAttributeBuilder(ParserObjectBuilder builderParent) : base(builderParent)
+        public GeneratorAttributeBuilder(ParserObjectBuilder? builderParent) : base(builderParent)
         {
             m_attrBuild = new ComponentAttribute
             {

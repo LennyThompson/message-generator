@@ -1,6 +1,6 @@
 using System;
 
-namespace Net.CougarMessage.Parser.MessageTypes.Interfaces
+namespace CougarMessage.Parser.MessageTypes.Interfaces
 {
     public interface IWabFilterAttribute : IAttribute
     {
@@ -22,7 +22,7 @@ namespace Net.CougarMessage.Parser.MessageTypes.Interfaces
         {
             Target Target { get; }
             string Name { get; }
-            string[] MemberPath { get; }
+            string[]? MemberPath { get; }
             string Filter { get; }
         }
 

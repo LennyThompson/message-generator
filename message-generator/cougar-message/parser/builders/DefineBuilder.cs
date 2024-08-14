@@ -2,17 +2,17 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text.Json;
-using Net.CougarMessage.Parser.MessageTypes;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
-using Net.Interfaces;
+using CougarMessage.Parser.MessageTypes;
+using CougarMessage.Parser.MessageTypes.Interfaces;
+using Interfaces;
 
-namespace Net.CougarMessage.Parser.Builders
+namespace CougarMessage.Parser.Builders
 {
     public class DefineBuilder : CougarMessageBuilderBase
     {
         private Define m_defineBuild;
 
-        protected DefineBuilder(ParserObjectBuilder builderParent) : base(builderParent)
+        public DefineBuilder(ParserObjectBuilder? builderParent) : base(builderParent)
         {
             m_defineBuild = new Define();
         }
@@ -22,22 +22,22 @@ namespace Net.CougarMessage.Parser.Builders
             return m_defineBuild;
         }
 
-        public override void ExitMacroDefine(Net.CougarMessage.Grammar.CougarParser.Macro_defineContext ctx)
+        public override void ExitMacroDefine(CougarParser.Macro_defineContext ctx)
         {
             OnComplete(this);
         }
 
-        public override void EnterDefineName(Net.CougarMessage.Grammar.CougarParser.Define_nameContext ctx)
+        public override void EnterDefineName(CougarParser.Define_nameContext ctx)
         {
             m_defineBuild.SetName(ctx.GetText());
         }
 
-        public override void EnterDefineValue(Net.CougarMessage.Grammar.CougarParser.Define_valueContext ctx)
+        public override void EnterDefineValue(CougarParser.Define_valueContext ctx)
         {
             m_defineBuild.SetValue(ctx.GetText());
         }
 
-        public override void EnterNumericValue(Net.CougarMessage.Grammar.CougarParser.Numeric_valueContext ctx)
+        public override void EnterNumericValue(CougarParser.Numeric_valueContext ctx)
         {
             NumericDefine numericDefine = new NumericDefine(m_defineBuild);
             string strValue = ctx.GetText();
@@ -54,7 +54,7 @@ namespace Net.CougarMessage.Parser.Builders
             m_defineBuild = numericDefine;
         }
 
-        public override void EnterMacroExpr(Net.CougarMessage.Grammar.CougarParser.Macro_exprContext ctx)
+        public override void EnterMacroExpr(CougarParser.Macro_exprContext ctx)
         {
             SetCurrentBuilder(new ExpressionBuilder(this));
         }
@@ -78,19 +78,19 @@ namespace Net.CougarMessage.Parser.Builders
                         exprDefine.SetValue(exprBuild.NumericValue());
                         m_defineBuild = exprDefine;
                     }
-                    builderChild.SetUsed();
+                    builderChild.Used = true;
                 }
             }
             return base.OnComplete(builderChild);
         }
 
-        public override void EnterMacroName(Net.CougarMessage.Grammar.CougarParser.Macro_nameContext ctx)
+        public override void EnterMacroName(CougarParser.Macro_nameContext ctx)
         {
             m_defineBuild.SetValue(ctx.GetText());
             m_defineBuild = new ExpressionDefine(m_defineBuild);
         }
 
-        public override void EnterQuotedString(Net.CougarMessage.Grammar.CougarParser.Quoted_stringContext ctx)
+        public override void EnterQuotedString(CougarParser.Quoted_stringContext ctx)
         {
             m_defineBuild = new QuotedStringDefine(m_defineBuild);
         }

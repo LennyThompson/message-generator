@@ -1,25 +1,25 @@
 using System.Collections.Generic;
 using System.Text.Json;
-using Net.CougarMessage.Parser.MessageTypes;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
-using Net.Interfaces;
+using CougarMessage.Parser.MessageTypes;
+using CougarMessage.Parser.MessageTypes.Interfaces;
+using Interfaces;
 
-namespace Net.CougarMessage.Parser.Builders
+namespace CougarMessage.Parser.Builders
 {
     public class ReasonAttributeBuilder : AttributeBuilderBase
     {
-        public ReasonAttributeBuilder(ParserObjectBuilder builderParent) : base(builderParent)
+        public ReasonAttributeBuilder(ParserObjectBuilder? builderParent) : base(builderParent)
         {
             AttrBuild.Name = "reason";
             AttrBuild.Type = IAttribute.AttributeType.REASON;
         }
 
-        public override void ExitReasonAttribute(Net.CougarMessage.Grammar.CougarParser.ReasonAttributeContext ctx)
+        public override void ExitReasonAttribute(CougarParser.ReasonAttributeContext ctx)
         {
             base.OnComplete(this);
         }
 
-        public override void ExitReasonList(Net.CougarMessage.Grammar.CougarParser.ReasonListContext ctx)
+        public override void ExitReasonList(CougarParser.ReasonListContext ctx)
         {
             if (ListValues.Count > 0)
             {
@@ -28,7 +28,7 @@ namespace Net.CougarMessage.Parser.Builders
             }
         }
 
-        public override void ExitReasonDetail(Net.CougarMessage.Grammar.CougarParser.ReasonDetailContext ctx)
+        public override void ExitReasonDetail(CougarParser.ReasonDetailContext ctx)
         {
             if (ListValues.Count > 0)
             {
@@ -37,22 +37,22 @@ namespace Net.CougarMessage.Parser.Builders
             }
         }
 
-        public override void EnterReasonWord(Net.CougarMessage.Grammar.CougarParser.ReasonWordContext ctx)
+        public override void EnterReasonWord(CougarParser.ReasonWordContext ctx)
         {
             ListValues.Add(ctx.GetText());
         }
 
-        public override void EnterReasonNumeric(Net.CougarMessage.Grammar.CougarParser.ReasonNumericContext ctx)
+        public override void EnterReasonNumeric(CougarParser.ReasonNumericContext ctx)
         {
             ListValues.Add(ctx.GetText());
         }
 
-        public override void EnterReasonHex(Net.CougarMessage.Grammar.CougarParser.ReasonHexContext ctx)
+        public override void EnterReasonHex(CougarParser.ReasonHexContext ctx)
         {
             ListValues.Add(ctx.GetText());
         }
 
-        public override void EnterReasonParens(Net.CougarMessage.Grammar.CougarParser.ReasonParensContext ctx)
+        public override void EnterReasonParens(CougarParser.ReasonParensContext ctx)
         {
             if (ListValues.Count > 0)
             {
@@ -61,7 +61,7 @@ namespace Net.CougarMessage.Parser.Builders
             }
         }
 
-        public override void ExitReasonParens(Net.CougarMessage.Grammar.CougarParser.ReasonParensContext ctx)
+        public override void ExitReasonParens(CougarParser.ReasonParensContext ctx)
         {
             if (ListValues.Count > 0)
             {

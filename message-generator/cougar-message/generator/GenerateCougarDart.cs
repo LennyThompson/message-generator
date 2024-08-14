@@ -2,13 +2,13 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using Net.Cougar;
-using Net.Cougar.Utils;
-using Net.CougarMessage.Adapter;
-using Net.TemplateManager;
+using Cougar;
+using Cougar.Utils;
+using CougarMessage.Adapter;
+using TemplateManager;
 using StringTemplate4;
 
-namespace Net.CougarMessage.Generator
+namespace CougarMessage.Generator
 {
     public class GenerateCougarDart
     {

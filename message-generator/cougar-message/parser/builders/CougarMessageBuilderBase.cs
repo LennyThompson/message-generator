@@ -2,23 +2,20 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using CougarMessage.Parser.Builders.Interfaces;
+using Interfaces;
 
-namespace Net.CougarMessage.Parser.Builders
+namespace CougarMessage.Parser.Builders
 {
-    public abstract class CougarMessageBuilderBase : Net.CougarMessage.Grammar.CougarParserBaseListener, ICougarMessageObjectBuilder
+    public abstract class CougarMessageBuilderBase(ParserObjectBuilder? builderParent)
+        : CougarParserBaseListener, CougarMessageObjectBuilder
     {
-        protected IParserObjectBuilder _builderParent;
-        protected List<IParserObjectBuilder> _builderChildren;
-        protected List<ObjectCompletion> _listCompleters;
+        protected ParserObjectBuilder? _builderParent = builderParent;
+        protected List<ParserObjectBuilder> _builderChildren = new();
+        protected List<ObjectCompletion> _listCompleters = new();
         protected bool _used = false;
 
-        protected CougarMessageBuilderBase(IParserObjectBuilder builderParent)
-        {
-            _builderParent = builderParent;
-            _builderChildren = new List<IParserObjectBuilder>();
-        }
-
-        protected void DoChildFinalise(Stack<IParserObjectBuilder> stackObjs)
+        protected void DoChildFinalise(Stack<ParserObjectBuilder> stackObjs)
         {
             stackObjs.Push(this);
             _listCompleters = _builderChildren
@@ -27,22 +24,23 @@ namespace Net.CougarMessage.Parser.Builders
             stackObjs.Pop();
         }
 
-        public virtual bool Used()
+        public bool Used
         {
-            return _used;
+            get => _used;
+            set => _used = value;
         }
 
-        public virtual void SetUsed()
-        {
-            _used = true;
-        }
-
-        public virtual bool OnComplete(IParserObjectBuilder builderChild)
+        public virtual bool OnComplete(ParserObjectBuilder builderChild)
         {
             return _builderParent.OnComplete(builderChild);
         }
 
-        public virtual void SetCurrentBuilder(IParserObjectBuilder builderCurrent)
+        public virtual ObjectCompletion Finalise(Stack<ParserObjectBuilder> stackObjs)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual void SetCurrentBuilder(ParserObjectBuilder builderCurrent)
         {
             _builderParent.SetCurrentBuilder(builderCurrent);
         }
@@ -52,7 +50,7 @@ namespace Net.CougarMessage.Parser.Builders
             return false;
         }
 
-        public virtual void AddModifiers(IParserObjectBuilder builderTarget)
+        public virtual void AddModifiers(ParserObjectBuilder builderTarget)
         {
         }
     }

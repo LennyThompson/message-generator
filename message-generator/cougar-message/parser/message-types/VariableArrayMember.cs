@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using CougarMessage.Parser.MessageTypes;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
+using CougarMessage.Parser.MessageTypes.Interfaces;
 
-namespace Net.CougarMessage.Parser.MessageTypes
+namespace CougarMessage.Parser.MessageTypes
 {
     public class VariableArrayMember : IVariableArrayMember
     {
@@ -29,12 +29,12 @@ namespace Net.CougarMessage.Parser.MessageTypes
 
         public bool IsUnknownSize()
         {
-            return _memberArraySize.Name() == Message.ERROR_ARRAY_SIZE_MEMBER;
+            return _memberArraySize.Name == Message.ERROR_ARRAY_SIZE_MEMBER;
         }
 
         public string Name()
         {
-            return _memberArray.Name();
+            return _memberArray.Name;
         }
 
         public string ShortName()

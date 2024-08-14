@@ -4,8 +4,8 @@ using System.Linq;
 using System.Text.Json;
 using CougarMessage.Adapter;
 using message_generator.cougar_message.adapter;
-using Net.CougarMessage.Adapter;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
+using CougarMessage.Adapter;
+using CougarMessage.Parser.MessageTypes.Interfaces;
 
 public class MessageSchemaAdapter
 {

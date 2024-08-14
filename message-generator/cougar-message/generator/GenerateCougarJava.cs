@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Text;
 using StringTemplate;
 
-namespace Net.CougarMessage.Generator
+namespace CougarMessage.Generator
 {
     public class GenerateCougarCSharp
     {

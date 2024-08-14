@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
-using Net.CougarMessage.Grammar;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
-using Net.Interfaces;
+using CougarMessage.Grammar;
+using CougarMessage.Parser.MessageTypes.Interfaces;
+using Interfaces;
 
-namespace Net.CougarMessage.Parser.Builders
+namespace CougarMessage.Parser.Builders
 {
     public class AlertLevelAttributeBuilder : AttributeBuilderBase
     {
-        public AlertLevelAttributeBuilder(ParserObjectBuilder builderParent) : base(builderParent)
+        public AlertLevelAttributeBuilder(ParserObjectBuilder? builderParent) : base(builderParent)
         {
             AttrBuild.Name = "alertlevel";
             AttrBuild.Type = IAttribute.AttributeType.ALERTLEVEL;

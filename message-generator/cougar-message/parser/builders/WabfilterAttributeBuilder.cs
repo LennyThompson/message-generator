@@ -2,18 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using Net.CougarMessage.Grammar;
-using Net.CougarMessage.Parser.MessageTypes;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
-using Net.Interfaces;
+using CougarMessage.Grammar;
+using CougarMessage.Parser.MessageTypes;
+using CougarMessage.Parser.MessageTypes.Interfaces;
+using Interfaces;
 
-namespace Net.CougarMessage.Parser.Builders
+namespace CougarMessage.Parser.Builders
 {
     public class WabfilterAttributeBuilder : AttributeBuilderBase
     {
         private List<string> _listMemberParts;
 
-        public WabfilterAttributeBuilder(ParserObjectBuilder builderParent) : base(builderParent)
+        public WabfilterAttributeBuilder(ParserObjectBuilder? builderParent) : base(builderParent)
         {
             _attrBuild = new WabFilterAttribute();
             _attrBuild.Name = "wabfilter";

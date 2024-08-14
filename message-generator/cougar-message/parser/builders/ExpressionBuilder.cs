@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 
-namespace Net.CougarMessage.Parser.Builders
+namespace CougarMessage.Parser.Builders
 {
     public class ExpressionBuilder : CougarMessageBuilderBase
     {
@@ -77,35 +77,5 @@ namespace Net.CougarMessage.Parser.Builders
         }
     }
 
-    public interface ISchemaBase { }
-
-    public interface ParserObjectBuilder { }
-
-    public abstract class CougarMessageBuilderBase
-    {
-        protected CougarMessageBuilderBase(ParserObjectBuilder builderParent) { }
-
-        protected virtual void OnComplete(ExpressionBuilder builder) { }
-    }
-
-    public class ObjectCompletion
-    {
-        public Action<ISchemaBase> DoCompletion { get; set; }
-    }
-
-    public class CougarParser
-    {
-        public class Numeric_valueContext
-        {
-            public string GetText() { return string.Empty; }
-        }
-
-        public class Macro_nameContext
-        {
-            public string GetText() { return string.Empty; }
-        }
-
-        public class Macro_exprContext { }
-    }
 }
 

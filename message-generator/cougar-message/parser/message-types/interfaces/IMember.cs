@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Net.CougarMessage.Parser.MessageTypes.Interfaces
+namespace CougarMessage.Parser.MessageTypes.Interfaces
 {
     public interface IMember
     {
@@ -10,17 +10,17 @@ namespace Net.CougarMessage.Parser.MessageTypes.Interfaces
         string StrippedName { get; set; }
         string Prefix { get; }
         string Type { get; }
-        IMessage MessageType { get; }
-        IEnum EnumType { get; }
+        IMessage? MessageType { get; }
+        IEnum? EnumType { get; }
         bool IsArray { get; }
         bool IsArrayPointer { get; }
         bool IsVariableLengthArray { get; }
         string ArraySize { get; }
         int NumericArraySize { get; }
-        List<IAttribute> Attributes { get; }
+        List<IAttribute>? Attributes { get; }
         int OriginalByteSize { get; }
 
-        string ShortFieldDescription();
-        string LongFieldDescription();
+        string? ShortFieldDescription();
+        string? LongFieldDescription();
     }
 }

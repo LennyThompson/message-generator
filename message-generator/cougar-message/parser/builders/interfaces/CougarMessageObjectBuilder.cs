@@ -1,10 +1,10 @@
 using System.Text.Json;
-using Net.Interfaces;
-using Net.CougarMessage.Grammar;
+using Interfaces;
+using CougarMessage.Grammar;
 
-namespace Net.CougarMessage.Parser.Builders.Interfaces
+namespace CougarMessage.Parser.Builders.Interfaces
 {
-    public interface ICougarMessageObjectBuilder : IParserObjectBuilder, ICougarParserListener
+    public interface CougarMessageObjectBuilder : ParserObjectBuilder, ICougarParserListener
     {
     }
 }

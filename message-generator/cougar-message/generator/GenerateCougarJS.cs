@@ -2,10 +2,10 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using Net.Cougar;
-using Net.CougarMessage;
-using Net.CougarMessage.Adapter;
-using Net.TemplateManager;
+using Cougar;
+using CougarMessage;
+using CougarMessage.Adapter;
+using TemplateManager;
 using StringTemplate;
 
 public class GenerateCougarJS

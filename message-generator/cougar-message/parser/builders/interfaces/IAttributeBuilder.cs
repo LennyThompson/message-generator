@@ -1,9 +1,10 @@
 using System.Text.Json;
+using CougarMessage.Parser.MessageTypes.Interfaces;
 
-namespace Net.CougarMessage.Parser.Builders.Interfaces
+namespace CougarMessage.Parser.Builders.Interfaces
 {
     public interface IAttributeBuilder
     {
-        Attribute GetAttribute();
+        IAttribute GetAttribute();
     }
 }

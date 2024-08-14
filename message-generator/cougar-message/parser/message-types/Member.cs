@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CougarMessage.Parser.MessageTypes.Interfaces;
 
-namespace Net.CougarMessage.Parser.MessageTypes
+namespace CougarMessage.Parser.MessageTypes
 {
-    public class Member : IMember
+    public class Member : IMember, IMember
     {
         private enum AttributeKeys { FIELDDESC }
         private static string DYNAMIC_ARRAY_SIZE = "JTP_VARIABLE_SIZE_ARRAY";
@@ -80,7 +81,7 @@ namespace Net.CougarMessage.Parser.MessageTypes
 
         public void AddAttribute(IAttribute attrAdd)
         {
-            m_mapAttributes[attrAdd.Name().ToUpper()] = attrAdd;
+            m_mapAttributes[attrAdd.Name.ToUpper()] = attrAdd;
         }
 
         public void SetMessageType(IMessage messageType)

@@ -2,17 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using CougarMessage.Parser.Builders.Interfaces;
+using CougarMessage.Parser.MessageTypes;
+using CougarMessage.Parser.MessageTypes.Interfaces;
+using Interfaces;
 
-namespace Net.CougarMessage.Parser.Builders
+namespace CougarMessage.Parser.Builders
 {
-    public class MemberBuilder : CougarMessageBuilderBase
+    public class MemberBuilder(MessageBuilder builderParent) : CougarMessageBuilderBase(builderParent)
     {
-        private Member m_memberBuild;
-
-        public MemberBuilder(ParserObjectBuilder builderParent) : base(builderParent)
-        {
-            m_memberBuild = new Member();
-        }
+        private Member m_memberBuild = new();
 
         public IMember GetMember()
         {
@@ -51,17 +50,17 @@ namespace Net.CougarMessage.Parser.Builders
                 if (builderChild is IAttributeBuilder attributeBuilder)
                 {
                     m_memberBuild.AddAttribute(attributeBuilder.GetAttribute());
-                    builderChild.SetUsed();
+                    builderChild.Used = true;
                 }
                 else if (builderChild is TypeNameBuilder typeNameBuilder)
                 {
                     m_memberBuild.SetType(typeNameBuilder.TypeName());
-                    builderChild.SetUsed();
+                    builderChild.Used = true;
                 }
                 else if (builderChild is ArrayDeclareBuilder arrayDeclareBuilder)
                 {
                     m_memberBuild.SetArraySize(arrayDeclareBuilder.ArraySize());
-                    builderChild.SetUsed();
+                    builderChild.Used = true;
                 }
             }
             return base.OnComplete(builderChild);
@@ -95,17 +94,17 @@ namespace Net.CougarMessage.Parser.Builders
                     if (m_memberBuild.IsArray() && m_memberBuild.NumericArraySize() < 0)
                     {
                         IDefine defineArraySize = messageSchema.Defines()
-                            .FirstOrDefault(define => define.Name().CompareTo(m_memberBuild.ArraySize()) == 0);
+                            .FirstOrDefault(define => define.Name.CompareTo(m_memberBuild.ArraySize()) == 0);
                         if (defineArraySize != null)
                         {
-                            if (defineArraySize.IsExpression() && defineArraySize.NumericValue() == 0)
+                            if (defineArraySize.IsExpression && defineArraySize.NumericValue == 0)
                             {
                                 defineArraySize.Evaluate(messageSchema.Defines());
                             }
                             m_memberBuild.SetArraySizeDefine(defineArraySize);
                         }
                     }
-                    foreach (var completer in m_listCompleters)
+                    foreach (var completer in _listCompleters)
                     {
                         completer.DoCompletion(schemaBase);
                     }

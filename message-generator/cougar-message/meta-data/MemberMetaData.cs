@@ -2,7 +2,7 @@ using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Net.CougarMessage.Metadata
+namespace CougarMessage.Metadata
 {
     public class MemberMetadata : JsonConverter<MemberMetadata>
     {

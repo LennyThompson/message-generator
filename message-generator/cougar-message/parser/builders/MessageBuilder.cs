@@ -2,18 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using Net.CougarMessage.Parser.Builders.Interfaces;
-using Net.CougarMessage.Parser.MessageTypes;
-using Net.CougarMessage.Parser.MessageTypes.Interfaces;
-using Net.Interfaces;
+using CougarMessage.Parser.Builders.Interfaces;
+using CougarMessage.Parser.MessageTypes;
+using CougarMessage.Parser.MessageTypes.Interfaces;
+using Interfaces;
 
-namespace Net.CougarMessage.Parser.Builders
+namespace CougarMessage.Parser.Builders
 {
     public class MessageBuilder : CougarMessageBuilderBase
     {
         private Message _messageBuild;
 
-        public MessageBuilder(ParserObjectBuilder builderParent, int nOrdinal) : base(builderParent)
+        public MessageBuilder(ParserObjectBuilder? builderParent, int nOrdinal) : base(builderParent)
         {
             _messageBuild = new Message(nOrdinal);
         }
@@ -32,7 +32,7 @@ namespace Net.CougarMessage.Parser.Builders
                 {
                     var messageSchema = (IMessageSchema)schemaBase;
                     var defineMessage = messageSchema.Defines()
-                        .FirstOrDefault(define => define.BaseName().CompareTo(_messageBuild.BaseName()) == 0);
+                        .FirstOrDefault(define => define.BaseName != null && define.BaseName.CompareTo(_messageBuild.BaseName()) == 0);
 
                     if (defineMessage != null)
                     {
@@ -106,13 +106,13 @@ namespace Net.CougarMessage.Parser.Builders
                 if (builderChild is IAttributeBuilder attributeBuilder)
                 {
                     _messageBuild.AddAttribute(attributeBuilder.GetAttribute());
-                    builderChild.SetUsed();
+                    builderChild.Used = true;
                 }
                 else if (builderChild is MemberBuilder memberBuilder)
                 {
                     _builderChildren.Add(builderChild);
                     _messageBuild.AddMember(memberBuilder.GetMember());
-                    builderChild.SetUsed();
+                    builderChild.Used = true;
                 }
             }
             return base.OnComplete(builderChild);

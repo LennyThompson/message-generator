@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 
-namespace Net.CougarMessage.Parser.Builders
+namespace CougarMessage.Parser.Builders
 {
     public class ArrayDeclareBuilder : CougarMessageBuilderBase
     {
@@ -12,7 +12,7 @@ namespace Net.CougarMessage.Parser.Builders
         private int _value;
         private char _operator;
 
-        public ArrayDeclareBuilder(IParserObjectBuilder builderParent) : base(builderParent)
+        public ArrayDeclareBuilder(MemberBuilder builderParent) : base(builderParent)
         {
         }
 
@@ -36,7 +36,7 @@ namespace Net.CougarMessage.Parser.Builders
             _define = ctx.GetText();
         }
 
-        public override bool OnComplete(IParserObjectBuilder builderChild)
+        public override bool OnComplete(ParserObjectBuilder builderChild)
         {
             if (!builderChild.Used())
             {
@@ -48,12 +48,12 @@ namespace Net.CougarMessage.Parser.Builders
                     }
                     else
                     {
-                        _define = constExpression.Define();
+                        _define = constExpression.Define;
                         _operator = constExpression.Operator();
                         _value = constExpression.Value();
                     }
 
-                    builderChild.SetUsed();
+                    builderChild.Used = true;
                 }
             }
             return base.OnComplete(builderChild);
@@ -64,7 +64,7 @@ namespace Net.CougarMessage.Parser.Builders
             OnComplete(this);
         }
 
-        public override ObjectCompletion Finalise(Stack<IParserObjectBuilder> stackObjs)
+        public override ObjectCompletion Finalise(Stack<ParserObjectBuilder> stackObjs)
         {
             return null;
         }
