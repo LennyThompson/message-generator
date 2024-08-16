@@ -2,35 +2,23 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
 using CougarMessage.Parser.MessageTypes.Interfaces;
 
 namespace CougarMessage.Parser.MessageTypes
 {
-    public class Message : IMessage, IMessage
+    public class Message(int nOrdinal) : IMessage
     {
         private static readonly string[] VARIABLE_ARRAY_NAME = { "Length", "Size", "NumberOf", "Count", "Len" };
         public static readonly string ERROR_ARRAY_SIZE_MEMBER = "***Error no array size member***";
-        private string m_strName;
-        private int m_nOrdinal;
-        private Dictionary<string, IAttribute> m_mapAttributes;
-        private List<IMember> m_listMembers;
+        private string m_strName = "";
+        private Dictionary<string, IAttribute>? m_mapAttributes;
+        private List<IMember> m_listMembers = new();
         private IDefine? m_defineMessage;
         private List<IMessage>? m_listGenerated;
         private List<TraceAssociation>? m_listTraceMembers;
         private TimestampFilter? m_timestampFilter;
         private ExternalKeyGenerator? m_externalKey;
-
-        public Message(int nOrdinal)
-        {
-            m_mapAttributes = new Dictionary<string, IAttribute>();
-            m_listMembers = new List<IMember>();
-            m_nOrdinal = nOrdinal;
-        }
-
-        public void SetName(string strName)
-        {
-            m_strName = strName;
-        }
 
         public void AddMember(IMember memberAdd)
         {
@@ -46,18 +34,17 @@ namespace CougarMessage.Parser.MessageTypes
         {
             if (!string.IsNullOrEmpty(attrAdd.Name))
             {
+                if (m_mapAttributes == null)
+                {
+                    m_mapAttributes = new();
+                }
                 m_mapAttributes[attrAdd.Name.ToUpper()] = attrAdd;
             }
         }
 
-        public void SetDefine(IDefine defineMessage)
+        public bool HasVariableLengthArrayMember
         {
-            m_defineMessage = defineMessage;
-        }
-
-        public bool HasVariableLengthArrayMember()
-        {
-            return Members.LastOrDefault()?.IsVariableLengthArray ?? false;
+            get => Members.LastOrDefault(member => member.IsVariableLengthArray) != null;
         }
 
         public void UpdateVariableLengthArray()
@@ -65,7 +52,7 @@ namespace CougarMessage.Parser.MessageTypes
             if (Members.Count > 0)
             {
                 IMember memberLast = Members.Last();
-                if (HasVariableLengthArrayMember())
+                if (HasVariableLengthArrayMember)
                 {
                     for (int index = m_listMembers.Count - 2; index >= 0; --index)
                     {
@@ -74,24 +61,24 @@ namespace CougarMessage.Parser.MessageTypes
                         {
                             if (member.Name.Contains(name))
                             {
-                                m_listMembers[m_listMembers.Count - 1] = new VariableArrayMember(memberLast, member);
+                                m_listMembers[^1] = new VariableArrayMember(memberLast, member);
                                 return;
                             }
                         }
                     }
                     IMember memberError = new Member();
-                    ((Member) memberError).SetName(ERROR_ARRAY_SIZE_MEMBER);
-                    ((Member) memberError).SetType(ERROR_ARRAY_SIZE_MEMBER);
-                    m_listMembers[m_listMembers.Count - 1] = new VariableArrayMember(memberLast, memberError);
+                    ((Member) memberError).Name = ERROR_ARRAY_SIZE_MEMBER;
+                    ((Member) memberError).Type = ERROR_ARRAY_SIZE_MEMBER;
+                    m_listMembers[^1] = new VariableArrayMember(memberLast, memberError);
                 }
-                else if (!memberLast.IsArray && memberLast.Type().ToUpper() == "CHAR" && m_listMembers.Count > 1)
+                else if (!memberLast.IsArray && memberLast.Type.ToUpper() == "CHAR" && m_listMembers.Count > 1)
                 {
-                    IMember member = m_listMembers[m_listMembers.Count - 2];
+                    IMember member = m_listMembers[^2];
                     foreach (string name in VARIABLE_ARRAY_NAME)
                     {
                         if (member.Name.Contains(name))
                         {
-                            m_listMembers[m_listMembers.Count - 1] = new VariableArrayMember(memberLast, member);
+                            m_listMembers[^1] = new VariableArrayMember(memberLast, member);
                             return;
                         }
                     }
@@ -102,16 +89,24 @@ namespace CougarMessage.Parser.MessageTypes
         public string Name
         {
             get => m_strName;
+            set => m_strName = value;
         }
 
         public int Ordinal
         {
-            get => m_nOrdinal;
+            get => nOrdinal;
         }
 
-        public List<IAttribute> Attributes
+        public List<IAttribute>? Attributes
         {
-            get => m_mapAttributes.Values.ToList();
+            get => m_mapAttributes?.Values.ToList();
+            set
+            {
+                if (value != null)
+                {
+                    m_mapAttributes = value.ToDictionary(attr => attr.Name, attr => attr);
+                }
+            }
         }
 
         public List<IMember> Members
@@ -119,9 +114,10 @@ namespace CougarMessage.Parser.MessageTypes
             get => m_listMembers;
         }
 
-        public IDefine Define
+        public IDefine? Define
         {
             get => m_defineMessage;
+            set => m_defineMessage = value;
         }
 
         public string BaseName
@@ -203,20 +199,20 @@ namespace CougarMessage.Parser.MessageTypes
 
         public bool FindAllMembers(Predicate<IMember> memberTest, List<Queue<IMember>> listMembers)
         {
-            IMember memberLocal = Members.FirstOrDefault(member => memberTest(member));
 
             Members
                 .Where(member => member.MessageType != null)
                 .ToList().ForEach(member =>
             {
                 List<Queue<IMember>> listLocalMembers = new List<Queue<IMember>>();
-                if (member.MessageType.FindAllMembers(memberTest, listLocalMembers))
+                if (member.MessageType?.FindAllMembers(memberTest, listLocalMembers) ?? false)
                 {
                     listLocalMembers.ForEach(stack => stack.Enqueue(member));
                     listMembers.AddRange(listLocalMembers);
                 }
             });
 
+            IMember? memberLocal = Members.FirstOrDefault(member => memberTest(member));
             if (memberLocal != null)
             {
                 Queue<IMember> memberStack = new Queue<IMember>();
@@ -246,153 +242,207 @@ namespace CougarMessage.Parser.MessageTypes
             return listMembers.Count > 0;
         }
 
-        public static Predicate<T> DistinctByKey<T>(Func<T, object> keyExtractor)
+        public bool HasStrippedNameMemberClash
         {
-            ConcurrentDictionary<object, bool> seen = new ConcurrentDictionary<object, bool>();
-            return t => seen.TryAdd(keyExtractor(t), true);
-        }
-
-        public bool HasStrippedNameMemberClash()
-        {
-            List<IMember> listDistinct = Members.DistinctBy(member => member.StrippedName).ToList();
-            return listDistinct.Count != Members.Count;
-        }
-
-        public string PrimaryDescription()
-        {
-            if (HasValidAttribute(IAttribute.AttributeType.Description.ToString(), 0))
+            get
             {
-                return m_mapAttributes[IAttribute.AttributeType.Description.ToString()].Values()[1].Aggregate((a, b) => a + " " + b);
+                List<IMember> listDistinct = Members.DistinctBy(member => member.StrippedName).ToList();
+                return listDistinct.Count != Members.Count;
             }
-            return "";
         }
 
-        public string ExtendedDescription()
+        public string? PrimaryDescription
         {
-            if (HasValidAttribute(IAttribute.AttributeType.Description.ToString(), 1))
+            get
             {
-                return m_mapAttributes[IAttribute.AttributeType.Description.ToString()].Values()[2].Aggregate((a, b) => a + " " + b);
-            }
-            return "";
-        }
-
-        public string Category()
-        {
-            if (HasValidAttribute(IAttribute.AttributeType.Category.ToString(), 0))
-            {
-                return m_mapAttributes[IAttribute.AttributeType.Category.ToString()].Values()[0][0];
-            }
-            return "";
-        }
-
-        public string Generator()
-        {
-            if (HasValidAttribute(IAttribute.AttributeType.Generator.ToString(), 0))
-            {
-                return m_mapAttributes[IAttribute.AttributeType.Generator.ToString()].Values()[0][0];
-            }
-            return "";
-        }
-
-        public string[] Generators()
-        {
-            return Generator().Length > 0 ? Generator().Split(new char[] { ',', '/', '-' }) : new string[] { };
-        }
-
-        public string Consumer()
-        {
-            if (HasValidAttribute(IAttribute.AttributeType.Consumer.ToString(), 0))
-            {
-                return m_mapAttributes[IAttribute.AttributeType.Consumer.ToString()].Values()[0][0];
-            }
-            return "";
-        }
-
-        public string[] Consumers()
-        {
-            return Consumer().Length > 0 ? Consumer().Split(new char[] { ',', '/', '-' }) : new string[] { };
-        }
-
-        public string[] WabFilters()
-        {
-            if (m_mapAttributes.ContainsKey(IAttribute.AttributeType.WabFilter.ToString()))
-            {
-                WabFilterAttribute wabFilter = (WabFilterAttribute)m_mapAttributes[IAttribute.AttributeType.WabFilter.ToString()];
-                List<string> listFilters = new List<string>();
-                if (wabFilter.IsSite())
+                if (HasValidAttribute(IAttribute.AttributeType.Description.ToString(), 0))
                 {
-                    listFilters.Add(wabFilter.SiteTarget.Name);
+                    return m_mapAttributes![IAttribute.AttributeType.Description.ToString()].Values[1]
+                                .Aggregate((a, b) => a + " " + b);
                 }
-                if (wabFilter.IsSubSite())
+
+                return null;
+            }
+        }
+
+        public string? ExtendedDescription
+        {
+            get
+            {
+                if (HasValidAttribute(IAttribute.AttributeType.Description.ToString(), 1))
                 {
-                    listFilters.Add(wabFilter.SubSiteTarget().Name());
+                    return m_mapAttributes![IAttribute.AttributeType.Description.ToString()].Values[2]
+                                .Aggregate((a, b) => a + " " + b);
                 }
-                if (wabFilter.IsHost())
+
+                return null;
+            }
+        }
+
+        public string? Category
+        {
+            get
+            {
+                if (HasValidAttribute(IAttribute.AttributeType.Category.ToString(), 0))
                 {
-                    listFilters.Add(wabFilter.HostTarget().Name());
+                    return m_mapAttributes![IAttribute.AttributeType.Category.ToString()].Values[0][0];
                 }
-                if (wabFilter.IsGroupHost())
+
+                return null;
+            }
+        }
+
+        public string? Generator
+        {
+            get
+            {
+                if (HasValidAttribute(IAttribute.AttributeType.Generator.ToString(), 0))
                 {
-                    listFilters.Add(wabFilter.GroupHostTarget().Name());
+                    return m_mapAttributes![IAttribute.AttributeType.Generator.ToString()].Values[0][0];
                 }
-                return listFilters.ToArray();
+
+                return null;
             }
-            return new string[] { };
         }
 
-        public string Alertlevel()
+        public string[]? Generators
         {
-            if (HasValidAttribute(IAttribute.AttributeType.ALERTLEVEL.ToString(), 0))
+            get => Generator?.Length > 0 ? Generator.Split(new char[] { ',', '/', '-' }) : new string[] { };
+        }
+
+        public string? Consumer
+        {
+            get
             {
-                return m_mapAttributes[IAttribute.AttributeType.ALERTLEVEL.ToString()].Values()[0][0];
+                if (HasValidAttribute(IAttribute.AttributeType.Consumer.ToString(), 0))
+                {
+                    return m_mapAttributes![IAttribute.AttributeType.Consumer.ToString()].Values[0][0];
+                }
+
+                return null;
             }
-            return "";
         }
 
-        public string Wabfilter()
+        public string[]? Consumers
         {
-            if (m_mapAttributes.ContainsKey(IAttribute.AttributeType.WABFILTER.ToString()))
+            get => Consumer?.Length > 0 ? Consumer.Split(new char[] { ',', '/', '-' }) : new string[] { };
+        }
+
+        public string[]? WabFilters
+        {
+            get
             {
-                WabFilterAttribute wabFilter = (WabFilterAttribute)m_mapAttributes[IAttribute.AttributeType.WABFILTER.ToString()];
-                return wabFilter.GetFilter();
+                if (m_mapAttributes?.ContainsKey(IAttribute.AttributeType.WabFilter.ToString()) ?? false)
+                {
+                    WabFilterAttribute wabFilter =
+                        (WabFilterAttribute)m_mapAttributes[IAttribute.AttributeType.WabFilter.ToString()];
+                    List<string> listFilters = new List<string>();
+                    if (wabFilter.IsSite)
+                    {
+                        listFilters.Add(wabFilter.SiteTarget?.Name ?? "ERROR");
+                    }
+
+                    if (wabFilter.IsSubSite)
+                    {
+                        listFilters.Add(wabFilter.SubSiteTarget?.Name ?? "ERROR");
+                    }
+
+                    if (wabFilter.IsHost)
+                    {
+                        listFilters.Add(wabFilter.HostTarget?.Name ?? "ERROR");
+                    }
+
+                    if (wabFilter.IsGroupHost)
+                    {
+                        listFilters.Add(wabFilter.GroupHostTarget?.Name ?? "ERROR");
+                    }
+
+                    return listFilters.ToArray();
+                }
+
+                return null;
             }
-            return "";
         }
 
-        public IAttribute GetWabFilterAttribute()
+        public string? AlertLevel
         {
-            if (m_mapAttributes.ContainsKey(IAttribute.AttributeType.WABFILTER.ToString()))
+            get
             {
-                return m_mapAttributes[IAttribute.AttributeType.WABFILTER.ToString()];
+                if (HasValidAttribute(IAttribute.AttributeType.AlertLevel.ToString(), 0))
+                {
+                    return m_mapAttributes![IAttribute.AttributeType.AlertLevel.ToString()].Values[0][0];
+                }
+
+                return null;
             }
-            return new WabFilterAttribute();
         }
 
-        public string Reason()
+        public string? WabFilter
         {
-            if (HasValidAttribute(IAttribute.AttributeType.REASON.ToString(), 0))
+            get
             {
-                return m_mapAttributes[IAttribute.AttributeType.REASON.ToString()].Values()[0].Aggregate((a, b) => a + " " + b);
+                if (m_mapAttributes?.ContainsKey(IAttribute.AttributeType.WabFilter.ToString()) ?? false)
+                {
+                    WabFilterAttribute wabFilter =
+                        (WabFilterAttribute)m_mapAttributes[IAttribute.AttributeType.WabFilter.ToString()];
+                    return wabFilter.GetFilter();
+                }
+
+                return null;
             }
-            return "";
         }
 
-        public bool IsNonMessage()
+        public IAttribute? WabFilterAttribute
         {
-            if (m_defineMessage.Name == null)
+            get
             {
-                return true;
+                if (m_mapAttributes?.ContainsKey(IAttribute.AttributeType.WabFilter.ToString()) ?? false)
+                {
+                    return m_mapAttributes[IAttribute.AttributeType.WabFilter.ToString()];
+                }
+
+                return null;
             }
-            return false;
         }
 
-        public int MessageByteSize()
+        public string? Reason
         {
-            return m_listMembers.Sum(member => member.OriginalByteSize());
+            get
+            {
+                if (HasValidAttribute(IAttribute.AttributeType.Reason.ToString(), 0))
+                {
+                    return m_mapAttributes![IAttribute.AttributeType.Reason.ToString()].Values[0]
+                                .Aggregate((a, b) => a + " " + b);
+                }
+
+                return null;
+            }
+        }
+
+        public bool IsNonMessage
+        {
+            get
+            {
+                if (m_defineMessage == null || m_defineMessage?.Name == null)
+                {
+                    return true;
+                }
+
+                return false;
+            }
+        }
+
+        public int MessageByteSize
+        {
+            get => Members.Sum(member => member.OriginalByteSize);
         }
 
         public void AddConsumer(string name)
         {
+            if (m_mapAttributes == null)
+            {
+                m_mapAttributes = new Dictionary<string, IAttribute>();
+            }
             switch (name)
             {
                 case "HOST_WabFilter":
@@ -412,7 +462,7 @@ namespace CougarMessage.Parser.MessageTypes
                     }
                     break;
                 default:
-                    if (!Consumers().Contains(name))
+                    if (Consumers != null && !Consumers.Contains(name))
                     {
                         if (!m_mapAttributes.ContainsKey(IAttribute.AttributeType.Consumer.ToString()))
                         {
@@ -426,34 +476,43 @@ namespace CougarMessage.Parser.MessageTypes
 
         public void AddGeneratedMessages(List<IMessage> listMessages)
         {
+            if (m_listGenerated == null)
+            {
+                m_listGenerated = new();
+            }
             m_listGenerated.AddRange(listMessages);
-            m_listGenerated = m_listGenerated.GroupBy(msg => msg.Name()).Select(grp => grp.First()).ToList();
+            m_listGenerated = m_listGenerated.GroupBy(msg => msg.Name).Select(grp => grp.First()).ToList();
         }
 
-        public List<IMessage> GetGeneratedMessages()
+        public List<IMessage>? GeneratedMessages
         {
-            return m_listGenerated;
+            get => m_listGenerated;
         }
 
-        public void AddTraceMember(CougarComponentModel.TraceAssociation traceAssociation, CougarComponentModel.ExternalKeyGenerator externalKey)
+        public void AddTraceMember(TraceAssociation traceAssociation, ExternalKeyGenerator? externalKey)
         {
             m_externalKey = externalKey;
+            if (m_listTraceMembers == null)
+            {
+                m_listTraceMembers = new();
+            }
             m_listTraceMembers.Add(traceAssociation);
         }
 
-        public List<CougarComponentModel.TraceAssociation> TraceMembers()
+        public List<TraceAssociation>? TraceMembers
         {
-            return m_listTraceMembers;
+            get => m_listTraceMembers;
         }
 
-        public CougarComponentModel.ExternalKeyGenerator ExternalKey()
+        public ExternalKeyGenerator? ExternalKey
         {
-            return m_externalKey;
+            get => m_externalKey;
         }
 
-        public void SetTimestampFilter(CougarComponentModel.TimestampFilter timestampFilter)
+        public TimestampFilter? TimestampFilter
         {
-            m_timestampFilter = timestampFilter;
+            get => m_timestampFilter;
+            set => m_timestampFilter = value;
         }
 
         public bool GetUseTimestampRange(IMessage messageFor)
@@ -461,7 +520,7 @@ namespace CougarMessage.Parser.MessageTypes
             if (m_timestampFilter != null)
             {
                 Stack<IMember> stackMembers = new Stack<IMember>();
-                if (m_timestampFilter.UseRange && !((Message)messageFor).FindTopMostMember(member => member.StrippedName.CompareTo(m_timestampFilter.SuppressField) == 0, stackMembers))
+                if (m_timestampFilter.UseRange && !((Message)messageFor).FindTopMostMember(member => member.StrippedName?.CompareTo(m_timestampFilter.SuppressIfFieldExists) == 0, stackMembers))
                 {
                     return true;
                 }
@@ -471,7 +530,7 @@ namespace CougarMessage.Parser.MessageTypes
 
         private bool HasValidAttribute(string strAttrKey, int nIndex)
         {
-            return m_mapAttributes.ContainsKey(strAttrKey) && m_mapAttributes[strAttrKey].Values().Count > nIndex;
+            return (m_mapAttributes?.ContainsKey(strAttrKey) ?? false) && m_mapAttributes[strAttrKey].Values.Count > nIndex ;
         }
     }
 }

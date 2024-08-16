@@ -2,26 +2,21 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Cougar;
 
 namespace CougarMessage.Parser.MessageTypes
 {
     public class ExternalKeyGenerator
     {
-        [JsonPropertyName("name")]
-        public string Name { get; set; }
+        [JsonPropertyName("name")] public string Name { get; set; } = "";
 
-        [JsonPropertyName("snippet")]
-        public string Snippet { get; set; }
+        [JsonPropertyName("snippet")] public string Snippet { get; set; } = "";
     }
 
     public class TraceAssociation
     {
-        [JsonPropertyName("src")]
-        public string Source { get; set; }
+        [JsonPropertyName("src")] public string Source { get; set; } = "";
 
-        [JsonPropertyName("dest")]
-        public string[] Destinations { get; set; }
+        [JsonPropertyName("dest")] public List<string> Destinations { get; set; } = new();
     }
 
     public class TimestampFilter
@@ -29,8 +24,7 @@ namespace CougarMessage.Parser.MessageTypes
         [JsonPropertyName("range")]
         public bool UseRange { get; set; }
 
-        [JsonPropertyName("suppress")]
-        public string SuppressIfFieldExists { get; set; }
+        [JsonPropertyName("suppress")] public string SuppressIfFieldExists { get; set; } = "";
     }
 
     public class ComponentGenerator
@@ -54,7 +48,7 @@ namespace CougarMessage.Parser.MessageTypes
     public class CougarComponent
     {
         [JsonPropertyName("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = "";
 
         [JsonPropertyName("consumer")]
         public List<string>? ConsumerMessages { get; set; }
@@ -64,7 +58,6 @@ namespace CougarMessage.Parser.MessageTypes
     }
     public class CougarComponentModel
     {
-
         [JsonPropertyName("components")]
         public List<CougarComponent>? Components { get; set; }
 

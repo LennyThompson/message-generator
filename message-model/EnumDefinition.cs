@@ -8,18 +8,8 @@ namespace CougarMessage.Parser.MessageTypes
 {
     public class EnumDefinition : IEnum
     {
-        private string _name;
-        private List<IEnumValue> _values;
-
-        public EnumDefinition()
-        {
-            _values = new List<IEnumValue>();
-        }
-
-        public void SetName(string name)
-        {
-            _name = name;
-        }
+        private string _name = "";
+        private List<IEnumValue> _values = new();
 
         public void AddValue(IEnumValue enumValue)
         {
@@ -30,7 +20,11 @@ namespace CougarMessage.Parser.MessageTypes
             _values.Add(enumValue);
         }
 
-        public string Name => _name;
+        public string Name
+        {
+            get => _name;
+            set => _name = value;
+        }
 
         public List<IEnumValue> Values => _values;
     }

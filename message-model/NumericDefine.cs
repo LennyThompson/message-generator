@@ -6,27 +6,21 @@ namespace CougarMessage.Parser.MessageTypes
 {
     public class NumericDefine : Define
     {
-        private int _value;
-
         public NumericDefine(IDefine defineFrom)
         {
             Name = defineFrom.Name;
             Value = defineFrom.Value;
         }
 
-        public void SetNumericValue(int value)
+        public new int NumericValue
         {
-            _value = value;
+            get => _numericValue;
+            set => _numericValue = value;
         }
 
-        public override int NumericValue()
+        public override bool IsNumeric
         {
-            return _value;
-        }
-
-        public override bool IsNumeric()
-        {
-            return true;
+            get => true;
         }
     }
 }

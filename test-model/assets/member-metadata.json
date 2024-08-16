@@ -1,0 +1,30 @@
+[
+  {
+    "name": "Comment2",
+    "language": "csharp",
+    "add-attribute": {
+      "name": "BsonIgnore",
+      "params": []
+    },
+    "remove-attribute": "BsonElement",
+    "type": "char[]",
+    "conversion": "new(\"\")"
+  },
+  {
+    "name": "Comment3",
+    "language": "csharp",
+    "add-attribute": {
+      "name": "BsonIgnore",
+      "params": []
+    },
+    "remove-attribute": "BsonElement",
+    "type": "char[]",
+    "conversion": "new(\"\")"
+  },
+  {
+    "name": "AuditOperationDT",
+    "language": "csharp",
+    "type": "DateTime",
+    "serialiser" : "CustomDateTimeDeserialiser"
+  }
+]

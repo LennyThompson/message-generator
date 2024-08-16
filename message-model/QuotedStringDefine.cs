@@ -9,18 +9,18 @@ namespace CougarMessage.Parser.MessageTypes
     {
         public QuotedStringDefine(IDefine defineFrom)
         {
-            SetName(defineFrom.Name());
-            SetValue(defineFrom.Value());
+            Name = defineFrom.Name;
+            Value = defineFrom.Value;
         }
 
-        public override void SetValue(string strValue)
+        public new string Value
         {
-            base.SetValue(UnquoteString(strValue));
+            set => base.Value = UnquoteString(value);
         }
 
-        public override bool IsString()
+        public new bool IsString
         {
-            return true;
+            get => true;
         }
 
         private static string UnquoteString(string input)

@@ -98,7 +98,7 @@ namespace CougarMessage.Parser.MessageTypes
             return GetTarget(targetFilter) != null;
         }
 
-        private IWabFilterAttribute.IWabFilterTarget GetTarget(IWabFilterAttribute.Target targetFilter)
+        private IWabFilterAttribute.IWabFilterTarget? GetTarget(IWabFilterAttribute.Target targetFilter)
         {
             return m_listTargets.FirstOrDefault(target => target.Target == targetFilter);
         }
@@ -114,16 +114,16 @@ namespace CougarMessage.Parser.MessageTypes
         public bool IsWATHost => FindTarget(IWabFilterAttribute.Target.WatHost);
         public bool IsNSAWAB => FindTarget(IWabFilterAttribute.Target.NsaWab);
 
-        public IWabFilterAttribute.IWabFilterTarget SiteTarget => GetTarget(IWabFilterAttribute.Target.Site);
-        public IWabFilterAttribute.IWabFilterTarget SubSiteTarget => GetTarget(IWabFilterAttribute.Target.Subsite);
-        public IWabFilterAttribute.IWabFilterTarget SiteHourTarget => GetTarget(IWabFilterAttribute.Target.SiteHour);
-        public IWabFilterAttribute.IWabFilterTarget WATSiteTarget => GetTarget(IWabFilterAttribute.Target.WatSite);
-        public IWabFilterAttribute.IWabFilterTarget HostTarget => GetTarget(IWabFilterAttribute.Target.Host);
-        public IWabFilterAttribute.IWabFilterTarget GroupHostTarget => GetTarget(IWabFilterAttribute.Target.Ghost);
-        public IWabFilterAttribute.IWabFilterTarget LHostTarget => GetTarget(IWabFilterAttribute.Target.LHost);
-        public IWabFilterAttribute.IWabFilterTarget GHostHourTarget => GetTarget(IWabFilterAttribute.Target.GhostHour);
-        public IWabFilterAttribute.IWabFilterTarget WATHostTarget => GetTarget(IWabFilterAttribute.Target.WatHost);
-        public IWabFilterAttribute.IWabFilterTarget NSAWABTarget => GetTarget(IWabFilterAttribute.Target.NsaWab);
+        public IWabFilterAttribute.IWabFilterTarget? SiteTarget => GetTarget(IWabFilterAttribute.Target.Site);
+        public IWabFilterAttribute.IWabFilterTarget? SubSiteTarget => GetTarget(IWabFilterAttribute.Target.Subsite);
+        public IWabFilterAttribute.IWabFilterTarget? SiteHourTarget => GetTarget(IWabFilterAttribute.Target.SiteHour);
+        public IWabFilterAttribute.IWabFilterTarget? WATSiteTarget => GetTarget(IWabFilterAttribute.Target.WatSite);
+        public IWabFilterAttribute.IWabFilterTarget? HostTarget => GetTarget(IWabFilterAttribute.Target.Host);
+        public IWabFilterAttribute.IWabFilterTarget? GroupHostTarget => GetTarget(IWabFilterAttribute.Target.Ghost);
+        public IWabFilterAttribute.IWabFilterTarget? LHostTarget => GetTarget(IWabFilterAttribute.Target.LHost);
+        public IWabFilterAttribute.IWabFilterTarget? GHostHourTarget => GetTarget(IWabFilterAttribute.Target.GhostHour);
+        public IWabFilterAttribute.IWabFilterTarget? WATHostTarget => GetTarget(IWabFilterAttribute.Target.WatHost);
+        public IWabFilterAttribute.IWabFilterTarget? NSAWABTarget => GetTarget(IWabFilterAttribute.Target.NsaWab);
     }
 }
 

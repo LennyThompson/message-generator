@@ -8,14 +8,9 @@ namespace CougarMessage.Parser.MessageTypes
 {
     public class Define : IDefine
     {
-        private string _name;
-        private string _value;
-        protected int _numericValue;
-
-        public Define()
-        {
-            _numericValue = -1;
-        }
+        protected string _name = "";
+        protected string _value = "";
+        protected int _numericValue = -1;
 
         public string Name
         {
@@ -43,13 +38,13 @@ namespace CougarMessage.Parser.MessageTypes
             }
         }
 
-        public bool IsNumeric => _numericValue > 0;
+        public virtual bool IsNumeric => _numericValue > 0;
 
-        public bool IsExpression => false;
+        public virtual bool IsExpression => false;
 
-        public bool IsString => false;
+        public virtual bool IsString => false;
 
-        public bool Evaluate(List<IDefine> defines)
+        public virtual bool Evaluate(List<IDefine> defines)
         {
             if (!string.IsNullOrEmpty(_value))
             {

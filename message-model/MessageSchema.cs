@@ -21,7 +21,7 @@ public class MessageSchema : IMessageSchema
     private Dictionary<string, IEnum> m_mapEnums;
     private Dictionary<string, IMessage> m_mapUnusedMessages;
     private List<string> m_listProtocolFiles;
-    private List<TypeMetaData> m_listMetaData;
+    private List<TypeMetaData>? m_listMetaData;
 
     public MessageSchema()
     {
@@ -29,6 +29,7 @@ public class MessageSchema : IMessageSchema
         m_listDefines = new List<IDefine>();
         m_mapEnums = new Dictionary<string, IEnum>();
         m_mapUnusedMessages = new Dictionary<string, IMessage>();
+        m_listProtocolFiles = new();
     }
 
     public void AddMessage(IMessage messageAdd)
@@ -61,7 +62,7 @@ public class MessageSchema : IMessageSchema
             List<string> listMessageTypes = m_mapMessages.Values
                 .SelectMany(message => message.Members
                     .Where(member => member.MessageType != null)
-                    .Select(member => member.MessageType.Name))
+                    .Select(member => member.MessageType!.Name))
                 .ToList();
 
             List<IMessage> listUnused = m_mapMessages.Values
@@ -89,7 +90,7 @@ public class MessageSchema : IMessageSchema
                         (
                             message =>
                             {
-                                IMessage? msgFound = Messages().FirstOrDefault
+                                IMessage? msgFound = Messages.FirstOrDefault
                                 (
                                     msg =>
                                         msg.Define != null && msg.Define.Name != null && msg.Define.Name.Equals(message)
@@ -119,7 +120,7 @@ public class MessageSchema : IMessageSchema
 
                                     if (generated.TimestampFilter != null)
                                     {
-                                        msgFound.SetTimestampFilter(generated.TimestampFilter);
+                                        msgFound.TimestampFilter = generated.TimestampFilter;
                                     }
 
                                     msgFound.AddGeneratedMessages
@@ -187,7 +188,7 @@ public class MessageSchema : IMessageSchema
         return DEFAULT_NAME;
     }
 
-    public List<TypeMetaData> MetaData
+    public List<TypeMetaData>? MetaData
     {
         get => m_listMetaData;
         set => m_listMetaData = value;
@@ -233,22 +234,30 @@ public class MessageSchema : IMessageSchema
 
             GeneratorMap.ToList().ForEach(pair =>
             {
-                mapAll.Merge(pair.Key, pair.Value, (list1, list2) =>
+                if (mapAll.ContainsKey(pair.Key))
                 {
-                    List<IMessage> listDistinctMsgs = new List<IMessage>(list1);
-                    listDistinctMsgs.AddRange(list2);
-                    return listDistinctMsgs.DistinctBy(message => message.Name).ToList();
-                });
+                    mapAll[pair.Key].AddRange(pair.Value);
+                }
+                else
+                {
+                    mapAll[pair.Key] = pair.Value;
+                }
+
+                mapAll[pair.Key] = mapAll[pair.Key].DistinctBy(message => message.Name).ToList();
             });
 
             ConsumerMap.ToList().ForEach(pair =>
             {
-                mapAll.Merge(pair.Key, pair.Value, (list1, list2) =>
+                if (mapAll.ContainsKey(pair.Key))
                 {
-                    List<IMessage> listDistinctMsgs = new List<IMessage>(list1);
-                    listDistinctMsgs.AddRange(list2);
-                    return listDistinctMsgs.DistinctBy(message => message.Name).ToList();
-                });
+                    mapAll[pair.Key].AddRange(pair.Value);
+                }
+                else
+                {
+                    mapAll[pair.Key] = pair.Value;
+                }
+
+                mapAll[pair.Key] = mapAll[pair.Key].DistinctBy(message => message.Name).ToList();
             });
 
             return mapAll;
@@ -296,21 +305,6 @@ public class MessageSchema : IMessageSchema
         public string Component => component;
 
         public IMessage Message => message;
-    }
-}
-
-public static class DictionaryExtensions
-{
-    public static void Merge<TKey, TValue>(this Dictionary<TKey, List<TValue>> dictionary, TKey key, List<TValue> value, Func<List<TValue>, List<TValue>, List<TValue>> mergeFunc)
-    {
-        if (dictionary.ContainsKey(key))
-        {
-            dictionary[key] = mergeFunc(dictionary[key], value);
-        }
-        else
-        {
-            dictionary[key] = value;
-        }
     }
 }
 

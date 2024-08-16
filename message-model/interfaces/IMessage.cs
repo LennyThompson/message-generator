@@ -36,9 +36,9 @@ namespace CougarMessage.Parser.MessageTypes.Interfaces
         string? Category { get; }
         string? Generator { get; }
         string[]? Generators { get; }
-        string Consumer { get; }
+        string? Consumer { get; }
         string[]? Consumers { get; }
-        string AlertLevel { get; }
+        string? AlertLevel { get; }
         string? WabFilter { get; }
         string[]? WabFilters { get; }
         IAttribute? WabFilterAttribute { get; }
@@ -50,12 +50,12 @@ namespace CougarMessage.Parser.MessageTypes.Interfaces
 
         void AddConsumer(string name);
         void AddGeneratedMessages(List<IMessage> listMessages);
-        List<IMessage>? GetGeneratedMessages();
+        List<IMessage>? GeneratedMessages { get; }
         void AddTraceMember(TraceAssociation traceAssociation, ExternalKeyGenerator? externalKey);
         List<TraceAssociation>? TraceMembers { get; }
         ExternalKeyGenerator? ExternalKey { get; }
 
-        void SetTimestampFilter(TimestampFilter timestampFilter);
+        TimestampFilter? TimestampFilter { get; set; }
         bool GetUseTimestampRange(IMessage messageFor);
     }
 }

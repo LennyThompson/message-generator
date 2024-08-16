@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using CougarMessage.Metadata;
 using CougarMessage.Parser.MessageTypes;
-using Interfaces;
 
 namespace CougarMessage.Parser.MessageTypes.Interfaces
 {
@@ -11,8 +10,8 @@ namespace CougarMessage.Parser.MessageTypes.Interfaces
         List<IMessage> UnusedMessages { get; }
         List<IEnum> Enums { get; }
         List<IDefine> Defines { get; }
-        IMessage FindMessage(string strName);
-        IEnum FindEnum(string strName);
+        IMessage? FindMessage(string strName);
+        IEnum? FindEnum(string strName);
 
         bool DoTreeShaking();
 
@@ -21,7 +20,7 @@ namespace CougarMessage.Parser.MessageTypes.Interfaces
         List<string> ProtocolSource { get; }
         string Name();
 
-        List<TypeMetaData> MetaData
+        List<TypeMetaData>? MetaData
         {
             get;
             set;

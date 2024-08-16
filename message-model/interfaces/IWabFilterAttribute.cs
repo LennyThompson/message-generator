@@ -39,17 +39,17 @@ namespace CougarMessage.Parser.MessageTypes.Interfaces
 
         bool IsNSAWAB { get; }
 
-        IWabFilterTarget SiteTarget { get; }
-        IWabFilterTarget SubSiteTarget { get; }
-        IWabFilterTarget SiteHourTarget { get; }
-        IWabFilterTarget WATSiteTarget { get; }
+        IWabFilterTarget? SiteTarget { get; }
+        IWabFilterTarget? SubSiteTarget { get; }
+        IWabFilterTarget? SiteHourTarget { get; }
+        IWabFilterTarget? WATSiteTarget { get; }
 
-        IWabFilterTarget HostTarget { get; }
-        IWabFilterTarget GroupHostTarget { get; }
-        IWabFilterTarget LHostTarget { get; }
-        IWabFilterTarget GHostHourTarget { get; }
-        IWabFilterTarget WATHostTarget { get; }
+        IWabFilterTarget? HostTarget { get; }
+        IWabFilterTarget? GroupHostTarget { get; }
+        IWabFilterTarget? LHostTarget { get; }
+        IWabFilterTarget? GHostHourTarget { get; }
+        IWabFilterTarget? WATHostTarget { get; }
 
-        IWabFilterTarget NSAWABTarget { get; }
+        IWabFilterTarget? NSAWABTarget { get; }
     }
 }

@@ -4,8 +4,8 @@ namespace CougarMessage.Parser.MessageTypes.Interfaces
 {
     public interface IVariableArrayMember : IMember
     {
-        IMember ArraySizeMember();
-        IMember ArrayMember();
-        bool IsUnknownSize();
+        IMember? ArraySizeMember { get; }
+        IMember ArrayMember { get; }
+        bool IsUnknownSize { get; }
     }
 }
