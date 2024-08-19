@@ -30,7 +30,7 @@ namespace CougarMessage.Parser.Builders
 
         public override void EnterEnum_name(CougarParser.Enum_nameContext ctx)
         {
-            _enumBuild.SetName(ctx.GetText());
+            _enumBuild.Name = ctx.GetText();
         }
 
         public override void EnterEnum_value_definition(CougarParser.Enum_value_definitionContext ctx)
@@ -40,7 +40,7 @@ namespace CougarMessage.Parser.Builders
 
         public override bool OnComplete(ParserObjectBuilder builderChild)
         {
-            if (!builderChild.Used())
+            if (!builderChild.Used)
             {
                 if (builderChild is EnumValueBuilder)
                 {

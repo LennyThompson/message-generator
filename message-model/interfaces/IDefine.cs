@@ -13,6 +13,6 @@ namespace CougarMessage.Parser.MessageTypes.Interfaces
         bool IsExpression { get; }
         bool IsString { get; }
 
-        bool Evaluate(List<IDefine> listDefines);
+        bool Evaluate(Func<string, IDefine?> fnFindDefine);
     }
 }

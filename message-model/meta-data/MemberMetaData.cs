@@ -60,6 +60,12 @@ namespace CougarMessage.Metadata
             set => m_strConversion = value;
         }
 
+        public string? Serialiser
+        {
+            get => m_strSerialiser;
+            set => m_strSerialiser = value;
+        }
+
         public bool HasConversion
         {
             get => m_strConversion != null && !m_strConversion.Equals(string.Empty);
@@ -85,10 +91,6 @@ namespace CougarMessage.Metadata
             get => m_strSerialiser != null && !m_strSerialiser.Equals(string.Empty);
         }
 
-        public string? Serialiser
-        {
-            get => m_strSerialiser;
-        }
         public bool IsCSharp
         {
             get => m_strLanguage.Equals("csharp", StringComparison.OrdinalIgnoreCase);

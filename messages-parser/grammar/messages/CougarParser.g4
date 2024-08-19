@@ -435,17 +435,20 @@ define_name
     : MACRO_NAME;
 
 define_value
-    : MACRO_OPEN? (numeric_value | quoted_string | macro_expr | macro_name | hex_numeric_value) MACRO_CLOSE?;
+    : MACRO_OPEN? (numeric_value | hex_numeric_value | quoted_string | macro_expr | macro_name) MACRO_CLOSE?;
 
 macro_name
     : MACRO_NAME;
 
 macro_expr
-    : macro_name MACRO_PLUS (macro_name | numeric_value);
+    : macro_name (macro_operator (macro_name | numeric_value))+;
 
 numeric_value
-    : MACRO_NUMBER (MACRO_PLUS MACRO_NUMBER)*;
+    : MACRO_NUMBER;
 
+macro_operator
+    : (MACRO_PLUS | MACRO_MINUS);
+    
 hex_numeric_value
     : MACRO_HEX_NUMBER;
 

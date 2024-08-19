@@ -10,11 +10,10 @@ namespace CougarMessage.Parser.Builders
 {
     public class DefineBuilder : CougarMessageBuilderBase
     {
-        private Define m_defineBuild;
+        private Define m_defineBuild = new Define();
 
         public DefineBuilder(ParserObjectBuilder? builderParent) : base(builderParent)
         {
-            m_defineBuild = new Define();
         }
 
         public IDefine GetDefine()
@@ -22,75 +21,67 @@ namespace CougarMessage.Parser.Builders
             return m_defineBuild;
         }
 
-        public override void ExitMacroDefine(CougarParser.Macro_defineContext ctx)
+        public override void ExitMacro_define(CougarParser.Macro_defineContext ctx)
         {
             OnComplete(this);
         }
 
-        public override void EnterDefineName(CougarParser.Define_nameContext ctx)
+        public override void EnterDefine_name(CougarParser.Define_nameContext ctx)
         {
-            m_defineBuild.SetName(ctx.GetText());
+            m_defineBuild.Name = ctx.GetText();
         }
 
-        public override void EnterDefineValue(CougarParser.Define_valueContext ctx)
+        public override void EnterDefine_value(CougarParser.Define_valueContext ctx)
         {
-            m_defineBuild.SetValue(ctx.GetText());
+            m_defineBuild.Value = ctx.GetText();
         }
 
-        public override void EnterNumericValue(CougarParser.Numeric_valueContext ctx)
+        public override void EnterNumeric_value(CougarParser.Numeric_valueContext ctx)
         {
             NumericDefine numericDefine = new NumericDefine(m_defineBuild);
             string strValue = ctx.GetText();
             try
             {
-                numericDefine.SetNumericValue(int.Parse(strValue));
+                numericDefine.NumericValue = int.Parse(strValue);
             }
             catch (FormatException)
             {
-                string[] listNumbers = strValue.Split('+');
-                int nValue = listNumbers.Select(strNumber => int.Parse(strNumber)).Sum();
-                numericDefine.SetNumericValue(nValue);
+                throw;
             }
             m_defineBuild = numericDefine;
         }
 
-        public override void EnterMacroExpr(CougarParser.Macro_exprContext ctx)
+        public override void EnterMacro_expr(CougarParser.Macro_exprContext ctx)
         {
             SetCurrentBuilder(new ExpressionBuilder(this));
         }
 
         public override bool OnComplete(ParserObjectBuilder builderChild)
         {
-            if (!builderChild.Used())
+            if (!builderChild.Used)
             {
                 if (builderChild is ExpressionBuilder exprBuild)
                 {
-                    if (exprBuild.HasOnlyNumericValue())
-                    {
-                        NumericDefine numericDefine = new NumericDefine(m_defineBuild);
-                        numericDefine.SetNumericValue(exprBuild.NumericValue());
-                        m_defineBuild = numericDefine;
-                    }
-                    else if (exprBuild.HasMacroExpression())
-                    {
-                        ExpressionDefine exprDefine = new ExpressionDefine(m_defineBuild);
-                        exprDefine.SetValues(exprBuild.ExpressionValues());
-                        exprDefine.SetValue(exprBuild.NumericValue());
-                        m_defineBuild = exprDefine;
-                    }
+                    ExpressionDefine exprDefine = new ExpressionDefine(m_defineBuild);
+                    exprDefine.Expression = exprBuild.Expression;
+                    m_defineBuild = exprDefine;
                     builderChild.Used = true;
                 }
             }
             return base.OnComplete(builderChild);
         }
 
-        public override void EnterMacroName(CougarParser.Macro_nameContext ctx)
+        public override void EnterMacro_name(CougarParser.Macro_nameContext ctx)
         {
-            m_defineBuild.SetValue(ctx.GetText());
-            m_defineBuild = new ExpressionDefine(m_defineBuild);
+            ExpressionDefine exprDefine = new(m_defineBuild);
+            exprDefine.Expression = new Expression();
+            ExpressionMacroValue macroValue = new ExpressionMacroValue();
+            macroValue.MacroValue = ctx.GetText();
+            exprDefine.Expression.Values.Add(macroValue);
+            m_defineBuild = exprDefine;
         }
 
-        public override void EnterQuotedString(CougarParser.Quoted_stringContext ctx)
+        public override void EnterQuoted_string(CougarParser.Quoted_stringContext ctx)
         {
             m_defineBuild = new QuotedStringDefine(m_defineBuild);
         }
@@ -103,7 +94,7 @@ namespace CougarMessage.Parser.Builders
                 {
                     if (m_defineBuild is ExpressionDefine expressionDefine)
                     {
-                        expressionDefine.Evaluate(((MessageSchema)schemaBase).Defines());
+                        expressionDefine.Evaluate((string strName) => ((MessageSchema)schemaBase).Defines.FirstOrDefault(define => define.Name == strName));
                     }
                 }
             };

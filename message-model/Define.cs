@@ -44,15 +44,32 @@ namespace CougarMessage.Parser.MessageTypes
 
         public virtual bool IsString => false;
 
-        public virtual bool Evaluate(List<IDefine> defines)
+        public virtual bool Evaluate(Func<string, IDefine?> fnFindDefine)
         {
-            if (!string.IsNullOrEmpty(_value))
+            if (IsNumeric)
             {
-                var defineFound = defines.FirstOrDefault(define => define.Name == _value);
-                if (defineFound != null && defineFound.IsNumeric)
+                return true;
+            }
+            else if (!string.IsNullOrEmpty(_value))
+            {
+                var defineFound = fnFindDefine(_value);
+                if (defineFound != null)
                 {
-                    _numericValue = defineFound.NumericValue;
-                    return true;
+                    if (defineFound.IsNumeric)
+                    {
+                        _numericValue = defineFound.NumericValue;
+                        return true;
+                    }
+                    else if
+                    (
+                        defineFound.IsExpression
+                        &&
+                        ((ExpressionDefine)defineFound).Evaluate(fnFindDefine)
+                    )
+                    {
+                        _numericValue = defineFound.NumericValue;
+                        return true;
+                    }
                 }
             }
             return false;
