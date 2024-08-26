@@ -1,56 +1,54 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using Interfaces;
 
 namespace CougarMessage.Parser.Builders
 {
     public class ArrayDeclareBuilder : CougarMessageBuilderBase
     {
-        private string _arraySize;
-        private string _define;
+        private string? _arraySize;
+        private string? _define;
 
-        private int _value;
-        private char _operator;
+        private int? _value;
+        private char? _operator;
 
         public ArrayDeclareBuilder(MemberBuilder builderParent) : base(builderParent)
         {
         }
 
-        public string ArraySize()
-        {
-            return _arraySize;
-        }
+        public string? ArraySize => _arraySize;
 
-        public override void EnterConstValue(CougarParser.ConstValueContext ctx)
+        public override void EnterConst_value(CougarParser.Const_valueContext ctx)
         {
             _arraySize = ctx.GetText();
         }
 
-        public override void EnterConstExpression(CougarParser.ConstExpressionContext ctx)
+        public override void EnterConst_expression(CougarParser.Const_expressionContext ctx)
         {
             SetCurrentBuilder(new ConstExpressionBuilder(this));
         }
 
-        public override void EnterExpressionDefine(CougarParser.ExpressionDefineContext ctx)
+        public override void EnterExpression_define(CougarParser.Expression_defineContext ctx)
         {
             _define = ctx.GetText();
         }
 
         public override bool OnComplete(ParserObjectBuilder builderChild)
         {
-            if (!builderChild.Used())
+            if (!builderChild.Used)
             {
                 if (builderChild is ConstExpressionBuilder constExpression)
                 {
-                    if (constExpression.HasNumericValue())
+                    if (constExpression.HasNumericValue)
                     {
-                        _value = constExpression.NumericValue();
+                        _value = constExpression.NumericValue!.Value;
                     }
                     else
                     {
                         _define = constExpression.Define;
-                        _operator = constExpression.Operator();
-                        _value = constExpression.Value();
+                        _operator = constExpression.Operator;
+                        _value = constExpression.Value;
                     }
 
                     builderChild.Used = true;
@@ -59,7 +57,7 @@ namespace CougarMessage.Parser.Builders
             return base.OnComplete(builderChild);
         }
 
-        public override void ExitArrayDecl(CougarParser.ArrayDeclContext ctx)
+        public override void ExitArray_decl(CougarParser.Array_declContext ctx)
         {
             OnComplete(this);
         }

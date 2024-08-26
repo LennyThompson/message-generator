@@ -10,6 +10,7 @@ namespace CougarMessage.Parser.MessageTypes
         protected string m_strName = "";
         protected List<List<string>> m_listValues = new List<List<string>>();
         protected IAttribute.AttributeType m_attrType = IAttribute.AttributeType.Any;
+        
 
         public string Name
         {

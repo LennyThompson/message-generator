@@ -5,6 +5,7 @@ using CougarMessage.Parser.Builders.Interfaces;
 using CougarMessage.Parser.MessageTypes;
 using CougarMessage.Parser.MessageTypes.Interfaces;
 using Interfaces;
+using Attribute = CougarMessage.Parser.MessageTypes.Attribute;
 
 namespace CougarMessage.Parser.Builders
 {
@@ -19,10 +20,7 @@ namespace CougarMessage.Parser.Builders
             m_listValues = new List<string>();
         }
 
-        public Attribute GetAttribute()
-        {
-            return m_attrBuild;
-        }
+        public IAttribute Attribute => m_attrBuild;
 
         public void EnterAttribute_extension(CougarParser.Attribute_extensionContext ctx)
         {
@@ -57,6 +55,7 @@ namespace CougarMessage.Parser.Builders
                 }
             };
         }
+
     }
 
     public class ObjectCompletion

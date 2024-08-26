@@ -1,62 +1,56 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using Interfaces;
 
 namespace CougarMessage.Parser.Builders
 {
     public class ConstExpressionBuilder : CougarMessageBuilderBase
     {
-        private string _define;
-        private int _firstValue = 0;
-        private int _secondValue = 0;
-        private char _operator;
+        private string? _define;
+        private int? _firstValue = 0;
+        private int? _secondValue = 0;
+        private char? _operator;
 
         public ConstExpressionBuilder(ParserObjectBuilder builderParent) : base(builderParent)
         {
         }
 
-        public bool HasNumericValue()
-        {
-            return _firstValue > 0 && _secondValue > 0;
-        }
+        public bool HasNumericValue => (_firstValue != null && (_firstValue > 0)) && (_secondValue == null || (_secondValue != null && _secondValue > 0));
 
-        public bool HasOnlyNumericValue()
-        {
-            return HasNumericValue();
-        }
+        public bool HasOnlyNumericValue => HasNumericValue;
 
-        public int NumericValue()
+        public int? NumericValue 
         {
-            if (HasNumericValue())
+            get
             {
-                return ComputeValue();
+                if (HasNumericValue)
+                {
+                    return ComputeValue();
+                }
+
+                return null;
             }
-            return -1;
         }
 
-        public int Value()
+        public int? Value
         {
-            if (HasNumericValue())
+            get
             {
-                return NumericValue();
+                if (HasNumericValue)
+                {
+                    return NumericValue;
+                }
+
+                return _firstValue;
             }
-            return _firstValue;
         }
 
-        public bool HasDefine()
-        {
-            return _define != null;
-        }
+        public bool HasDefine => _define != null;
 
-        public string Define()
-        {
-            return _define;
-        }
+        public string? Define => _define;
 
-        public char Operator()
-        {
-            return _operator;
-        }
+        public char? Operator => _operator;
 
         public override void EnterExpression_define(CougarParser.Expression_defineContext ctx)
         {
@@ -96,25 +90,25 @@ namespace CougarMessage.Parser.Builders
             };
         }
 
-        private int ComputeValue()
+        private int? ComputeValue()
         {
-            if (HasNumericValue())
+            if (HasNumericValue && _operator != null)
             {
                 switch (_operator)
                 {
                     case '+':
-                        return _firstValue + _secondValue;
+                        return (_firstValue! + _secondValue!)!.Value;
                     case '-':
-                        return _firstValue - _secondValue;
+                        return (_firstValue! - _secondValue!)!.Value;
                     case '*':
-                        return _firstValue * _secondValue;
+                        return (_firstValue! * _secondValue!)!.Value;
                     case '/':
-                        return _firstValue / _secondValue;
+                        return (_firstValue! / _secondValue!)!.Value;
                     default:
                         return -1;
                 }
             }
-            return -1;
+            return Value;
         }
     }
 }

@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "wiRVClrdRng=",
+  "success": true,
+  "projectFilePath": "/home/lenny/dev/csharp/message-generator/messages-parser/messages-parser.csproj",
+  "expectedPackageFiles": [
+    "/home/lenny/.nuget/packages/antlr4.runtime.standard/4.13.1/antlr4.runtime.standard.4.13.1.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using CougarMessage.Parser.MessageTypes.Interfaces;
 
 namespace CougarMessage.Parser.MessageTypes
@@ -73,10 +74,16 @@ namespace CougarMessage.Parser.MessageTypes
         {
             get
             {
-                if (m_strStrippedName == null)
+                if (string.IsNullOrEmpty(m_strStrippedName))
                 {
-                    m_strStrippedName = string.Concat(ShortName.Split(new[] { " " }, StringSplitOptions.RemoveEmptyEntries)
-                        .Where(part => char.IsUpper(part[0])));
+                    List<string> listParts = Regex.Matches(ShortName, "(^[a-z]+|[A-Z]+(?![a-z])|[A-Z][a-z]+)")
+                        .OfType<Match>()
+                        .Select(m => m.Value)
+                        .ToList();
+                    m_strStrippedName = string.Concat
+                        (
+                            listParts.Where(part => char.IsUpper(part[0]))
+                        );
                     if (string.IsNullOrEmpty(m_strStrippedName))
                     {
                         m_strStrippedName = char.ToUpper(ShortName[0]) + ShortName.Substring(1);

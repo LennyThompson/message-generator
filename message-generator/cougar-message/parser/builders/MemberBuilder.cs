@@ -13,10 +13,7 @@ namespace CougarMessage.Parser.Builders
     {
         private Member m_memberBuild = new();
 
-        public IMember GetMember()
-        {
-            return m_memberBuild;
-        }
+        public IMember Member => m_memberBuild;
 
         public override void EnterFielddesc_attribute(CougarParser.Fielddesc_attributeContext ctx)
         {
@@ -25,7 +22,7 @@ namespace CougarMessage.Parser.Builders
 
         public override void EnterMember_name(CougarParser.Member_nameContext ctx)
         {
-            m_memberBuild.SetName(ctx.GetText());
+            m_memberBuild.Name = ctx.GetText();
         }
 
         public override void EnterType_name(CougarParser.Type_nameContext ctx)
@@ -45,21 +42,21 @@ namespace CougarMessage.Parser.Builders
 
         public override bool OnComplete(ParserObjectBuilder builderChild)
         {
-            if (!builderChild.Used())
+            if (!builderChild.Used)
             {
                 if (builderChild is IAttributeBuilder attributeBuilder)
                 {
-                    m_memberBuild.AddAttribute(attributeBuilder.GetAttribute());
+                    m_memberBuild.AddAttribute(attributeBuilder.Attribute);
                     builderChild.Used = true;
                 }
                 else if (builderChild is TypeNameBuilder typeNameBuilder)
                 {
-                    m_memberBuild.SetType(typeNameBuilder.TypeName());
+                    m_memberBuild.Type = typeNameBuilder.TypeName;
                     builderChild.Used = true;
                 }
                 else if (builderChild is ArrayDeclareBuilder arrayDeclareBuilder)
                 {
-                    m_memberBuild.SetArraySize(arrayDeclareBuilder.ArraySize());
+                    m_memberBuild.ArraySize = arrayDeclareBuilder.ArraySize;
                     builderChild.Used = true;
                 }
             }
@@ -78,28 +75,28 @@ namespace CougarMessage.Parser.Builders
                 DoCompletion = (schemaBase) =>
                 {
                     IMessageSchema messageSchema = (IMessageSchema)schemaBase;
-                    IMessage messageType = messageSchema.FindMessage(m_memberBuild.Type());
+                    IMessage? messageType = messageSchema.FindMessage(m_memberBuild.Type);
                     if (messageType != null)
                     {
                         m_memberBuild.SetMessageType(messageType);
                     }
                     else
                     {
-                        IEnum enumType = messageSchema.FindEnum(m_memberBuild.Type());
+                        IEnum? enumType = messageSchema.FindEnum(m_memberBuild.Type);
                         if (enumType != null)
                         {
                             m_memberBuild.SetEnumType(enumType);
                         }
                     }
-                    if (m_memberBuild.IsArray() && m_memberBuild.NumericArraySize() < 0)
+                    if (m_memberBuild.IsArray && m_memberBuild.NumericArraySize < 0)
                     {
-                        IDefine defineArraySize = messageSchema.Defines()
-                            .FirstOrDefault(define => define.Name.CompareTo(m_memberBuild.ArraySize()) == 0);
+                        IDefine? defineArraySize = messageSchema.Defines
+                            .FirstOrDefault(define => define.Name.CompareTo(m_memberBuild.ArraySize) == 0);
                         if (defineArraySize != null)
                         {
                             if (defineArraySize.IsExpression && defineArraySize.NumericValue == 0)
                             {
-                                defineArraySize.Evaluate(messageSchema.Defines());
+                                defineArraySize.Evaluate(messageSchema.Defines);
                             }
                             m_memberBuild.SetArraySizeDefine(defineArraySize);
                         }

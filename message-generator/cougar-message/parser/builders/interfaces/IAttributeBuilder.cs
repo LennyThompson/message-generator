@@ -5,6 +5,6 @@ namespace CougarMessage.Parser.Builders.Interfaces
 {
     public interface IAttributeBuilder
     {
-        IAttribute GetAttribute();
+        IAttribute Attribute { get; }
     }
 }

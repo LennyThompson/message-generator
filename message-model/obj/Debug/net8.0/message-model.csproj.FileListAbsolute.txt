@@ -1,0 +1,11 @@
+/home/lenny/dev/csharp/message-generator/message-model/bin/Debug/net8.0/message-model.deps.json
+/home/lenny/dev/csharp/message-generator/message-model/bin/Debug/net8.0/message-model.dll
+/home/lenny/dev/csharp/message-generator/message-model/bin/Debug/net8.0/message-model.pdb
+/home/lenny/dev/csharp/message-generator/message-model/obj/Debug/net8.0/message-model.GeneratedMSBuildEditorConfig.editorconfig
+/home/lenny/dev/csharp/message-generator/message-model/obj/Debug/net8.0/message-model.AssemblyInfoInputs.cache
+/home/lenny/dev/csharp/message-generator/message-model/obj/Debug/net8.0/message-model.AssemblyInfo.cs
+/home/lenny/dev/csharp/message-generator/message-model/obj/Debug/net8.0/message-model.csproj.CoreCompileInputs.cache
+/home/lenny/dev/csharp/message-generator/message-model/obj/Debug/net8.0/message-model.dll
+/home/lenny/dev/csharp/message-generator/message-model/obj/Debug/net8.0/refint/message-model.dll
+/home/lenny/dev/csharp/message-generator/message-model/obj/Debug/net8.0/message-model.pdb
+/home/lenny/dev/csharp/message-generator/message-model/obj/Debug/net8.0/ref/message-model.dll

@@ -5,6 +5,7 @@ using Cougar.Parser.DbTypes.Interfaces;
 using CougarMessage.Parser.MessageTypes;
 using CougarMessage.Parser.MessageTypes.Interfaces;
 using Interfaces;
+using Attribute = CougarMessage.Parser.MessageTypes.Attribute;
 
 namespace CougarMessage.Parser.Builders
 {

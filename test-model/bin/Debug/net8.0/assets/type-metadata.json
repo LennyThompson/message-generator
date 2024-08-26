@@ -1,0 +1,304 @@
+[
+  {
+    "name": "SAddCssAuditRecord",
+    "add-attribute": {
+      "name": "BsonIgnoreExtraElements",
+      "params": []
+    },
+    "members": [
+      {
+        "name": "Comment2",
+        "language": "csharp",
+        "add-attribute": {
+          "name": "BsonIgnore",
+          "params": []
+        },
+        "remove-attribute": "BsonElement",
+        "type": "char[]",
+        "conversion": "new(\"\")"
+      },
+      {
+        "name": "Comment3",
+        "language": "csharp",
+        "add-attribute": {
+          "name": "BsonIgnore",
+          "params": []
+        },
+        "remove-attribute": "BsonElement",
+        "type": "char[]",
+        "conversion": "new(\"\")"
+      },
+      {
+        "name": "Comment4",
+        "language": "csharp",
+        "add-attribute": {
+          "name": "BsonIgnore",
+          "params": []
+        },
+        "remove-attribute": "BsonElement",
+        "type": "char[]",
+        "conversion": "new(\"\")"
+      },
+      {
+        "name": "Comment5",
+        "language": "csharp",
+        "add-attribute": {
+          "name": "BsonIgnore",
+          "params": []
+        },
+        "remove-attribute": "BsonElement",
+        "type": "char[]",
+        "conversion": "new(\"\")"
+      }
+    ]
+  },
+  {
+    "name": "SAddCBGAudit",
+    "members": [
+      {
+        "name": "AuditOperationDT",
+        "language": "csharp",
+        "type": "DateTime",
+        "serialiser" : "CustomDateTimeDeserialiser"
+      },
+      {
+        "name": "LoggedDT",
+        "language": "csharp",
+        "type": "DateTime",
+        "serialiser" : "CustomDateTimeDeserialiser"
+      }
+    ]
+
+  },
+  {
+    "name": "SCSSCreditRequest_V3",
+    "members": [
+      {
+        "name": "TransID",
+        "language": "csharp",
+        "type": "long",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  },
+  {
+    "name": "SCSSCreditRequestDenied",
+    "members": [
+      {
+        "name": "TransID",
+        "language": "csharp",
+        "type": "long",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  },
+  {
+    "name": "SCSSCreditRequestGranted_V3",
+    "members": [
+      {
+        "name": "TransID",
+        "language": "csharp",
+        "type": "long",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  },
+  {
+    "name": "SCSSGetBalance",
+    "members": [
+      {
+        "name": "BalanceType",
+        "language": "csharp",
+        "type": "int",
+        "conversion": "mongoType.BalanceType.Select(balType => (byte) balType).ToArray()"
+      }
+    ]
+  },
+  {
+    "name": "STrackingSessionStopped_V2",
+    "members": [
+      {
+        "name": "SessionType",
+        "language": "csharp",
+        "type": "int",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  },
+  {
+    "name": "STrackingSessionStopped",
+    "members": [
+      {
+        "name": "SessionType",
+        "language": "csharp",
+        "type": "int",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  },
+  {
+    "name": "SEmployeeSessionHeader",
+    "members": [
+      {
+        "name": "SessionType",
+        "language": "csharp",
+        "type": "int",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  },
+  {
+    "name": "SEGMMeters",
+    "members": [
+      {
+        "name": "*",
+        "language": "csharp",
+        "type": "Int64",
+        "target-type": "DWORD",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  },
+  {
+    "name": "SCurrentCreditMeterRequested",
+    "members": [
+      {
+        "name": "CurrentCreditCents",
+        "language": "csharp",
+        "type": "Int64",
+        "target-type": "DWORD",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  },
+  {
+    "name": "SECTFromEGMSuccess",
+    "members": [
+      {
+        "name": "SequenceNumber",
+        "language": "csharp",
+        "type": "Int64",
+        "target-type": "DWORD",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  },
+  {
+    "name": "SUpdatePatronGroupSite",
+    "members": [
+      {
+        "name": "NullFlags1",
+        "language": "csharp",
+        "type": "Int64",
+        "target-type": "DWORD",
+        "conversion": "(uint) mongoType.*"
+      },
+      {
+        "name": "NullFlags2",
+        "language": "csharp",
+        "type": "Int64",
+        "target-type": "DWORD",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  },
+  {
+    "name": "SUpdatePatron",
+    "members": [
+      {
+        "name": "NullFlags1",
+        "language": "csharp",
+        "type": "Int64",
+        "target-type": "DWORD",
+        "conversion": "(uint) mongoType.*"
+      },
+      {
+        "name": "NullFlags2",
+        "language": "csharp",
+        "type": "Int64",
+        "target-type": "DWORD",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  },
+  {
+    "name": "*",
+    "members": [
+      {
+        "name": "TicketNumber",
+        "language": "csharp",
+        "type": "Int64",
+        "target-type": "DWORD",
+        "conversion": "(uint) mongoType.*"
+      },
+      {
+        "name": "TransID",
+        "language": "csharp",
+        "type": "Int64",
+        "target-type": "DWORD",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  },
+  {
+    "name": "SCSSRequestHostCardNumber",
+    "members": [
+      {
+        "name": "TransID",
+        "language": "csharp",
+        "type": "Int64",
+        "target-type": "DWORD",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  },
+  {
+    "name": "SCBGAccountHasRegisteredPINRequest",
+    "members": [
+      {
+        "name": "UniqueRequestID",
+        "language": "csharp",
+        "type": "Int64",
+        "target-type": "DWORD",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  },
+  {
+    "name": "SCBGAccountHasRegisteredPINResponse",
+    "members": [
+      {
+        "name": "UniqueRequestID",
+        "language": "csharp",
+        "type": "Int64",
+        "target-type": "DWORD",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  },
+  {
+    "name": "SSCEGMLPGroupContributionFail",
+    "members": [
+      {
+        "name": "Amount",
+        "language": "csharp",
+        "type": "Int64",
+        "target-type": "DWORD",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  },
+  {
+    "name": "SLargeMeterJump",
+    "members": [
+      {
+        "name": "CentsJump",
+        "language": "csharp",
+        "type": "Int64",
+        "target-type": "DWORD",
+        "conversion": "(uint) mongoType.*"
+      }
+    ]
+  }
+
+]

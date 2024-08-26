@@ -1,0 +1,6 @@
+[
+  {
+    "name": "BsonIgnore",
+    "params": [ "param1", "param2" ]
+  }
+]

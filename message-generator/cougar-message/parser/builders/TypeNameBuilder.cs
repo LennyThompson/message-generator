@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text.Json;
+using Interfaces;
 
 namespace CougarMessage.Parser.Builders
 {
@@ -11,12 +12,9 @@ namespace CougarMessage.Parser.Builders
         {
         }
 
-        public string TypeName()
-        {
-            return _name;
-        }
+        public string TypeName => _name;
 
-        public override void ExitTypeName(CougarParser.TypeNameContext ctx)
+        public override void ExitType_name(CougarParser.Type_nameContext ctx)
         {
             _name = ctx.GetText();
             OnComplete(this);
