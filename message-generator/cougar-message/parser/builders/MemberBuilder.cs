@@ -78,27 +78,30 @@ namespace CougarMessage.Parser.Builders
                     IMessage? messageType = messageSchema.FindMessage(m_memberBuild.Type);
                     if (messageType != null)
                     {
-                        m_memberBuild.SetMessageType(messageType);
+                        m_memberBuild.MessageType = messageType;
                     }
                     else
                     {
                         IEnum? enumType = messageSchema.FindEnum(m_memberBuild.Type);
                         if (enumType != null)
                         {
-                            m_memberBuild.SetEnumType(enumType);
+                            m_memberBuild.EnumType = enumType;
                         }
                     }
                     if (m_memberBuild.IsArray && m_memberBuild.NumericArraySize < 0)
                     {
                         IDefine? defineArraySize = messageSchema.Defines
-                            .FirstOrDefault(define => define.Name.CompareTo(m_memberBuild.ArraySize) == 0);
+                            .FirstOrDefault(define => String.Compare(define.Name, m_memberBuild.ArraySize, StringComparison.Ordinal) == 0);
                         if (defineArraySize != null)
                         {
-                            if (defineArraySize.IsExpression && defineArraySize.NumericValue == 0)
+                            if (defineArraySize is { IsExpression: true, NumericValue: 0 })
                             {
-                                defineArraySize.Evaluate(messageSchema.Defines);
+                                defineArraySize.Evaluate(defName =>
+                                {
+                                    return messageSchema.Defines.FirstOrDefault(def => def.Name == defName);
+                                });
                             }
-                            m_memberBuild.SetArraySizeDefine(defineArraySize);
+                            m_memberBuild.ArraySizeDefine = defineArraySize;
                         }
                     }
                     foreach (var completer in _listCompleters)

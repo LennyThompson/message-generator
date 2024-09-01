@@ -9,8 +9,8 @@ namespace CougarMessage.Parser.MessageTypes
     public class Member : IMember
     {
         private enum AttributeKeys { FIELDDESC }
-        private static string DYNAMIC_ARRAY_SIZE = "JTP_VARIABLE_SIZE_ARRAY";
-        private static string MEMBER_PREFIX = "m_";
+        private const string DYNAMIC_ARRAY_SIZE = "JTP_VARIABLE_SIZE_ARRAY";
+        private const string MEMBER_PREFIX = "m_";
         private string m_strName = "";
         private string m_strStrippedName = "";
         private string m_strType = "";
@@ -24,12 +24,16 @@ namespace CougarMessage.Parser.MessageTypes
         private int m_nArraySize;
         private Dictionary<string, IAttribute>? m_mapAttributes;
 
-        public void SetArraySizeDefine(IDefine defineArraySize)
+        public IDefine? ArraySizeDefine
         {
-            m_defineArraySize = defineArraySize;
-            if (m_defineArraySize.IsNumeric)
+            get => m_defineArraySize;
+            set
             {
-                m_nArraySize = m_defineArraySize.NumericValue;
+                m_defineArraySize = value;
+                if (m_defineArraySize?.IsNumeric ?? false)
+                {
+                    m_nArraySize = m_defineArraySize.NumericValue;
+                }
             }
         }
 
@@ -42,16 +46,6 @@ namespace CougarMessage.Parser.MessageTypes
             m_mapAttributes[attrAdd.Name.ToUpper()] = attrAdd;
         }
 
-        public void SetMessageType(IMessage messageType)
-        {
-            m_messageType = messageType;
-        }
-
-        public void SetEnumType(IEnum enumType)
-        {
-            m_enumType = enumType;
-        }
-
         public string Name
         {
             get => m_strName;
@@ -62,7 +56,7 @@ namespace CougarMessage.Parser.MessageTypes
         {
             get
             {
-                if (Name.IndexOf(MEMBER_PREFIX) == 0)
+                if (Name.IndexOf(MEMBER_PREFIX, StringComparison.Ordinal) == 0)
                 {
                     return Name.Substring(2);
                 }
@@ -150,7 +144,7 @@ namespace CougarMessage.Parser.MessageTypes
                 }
                 catch (Exception )
                 {
-                    if (m_strArraySize!.CompareTo(DYNAMIC_ARRAY_SIZE) == 0)
+                    if (String.Compare(m_strArraySize!, DYNAMIC_ARRAY_SIZE, StringComparison.Ordinal) == 0)
                     {
                         m_nArraySize = 1;
                     }
