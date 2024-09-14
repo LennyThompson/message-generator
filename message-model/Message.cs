@@ -255,9 +255,10 @@ namespace CougarMessage.Parser.MessageTypes
         {
             get
             {
-                if (HasValidAttribute(IAttribute.AttributeType.Description.ToString(), 0))
+                string strKey = IAttribute.AttributeType.Description.ToString().ToUpper();
+                if (HasValidAttribute(strKey, 0))
                 {
-                    return m_mapAttributes![IAttribute.AttributeType.Description.ToString()].Values[1]
+                    return m_mapAttributes![strKey].Values[0]
                                 .Aggregate((a, b) => a + " " + b);
                 }
 
@@ -269,9 +270,10 @@ namespace CougarMessage.Parser.MessageTypes
         {
             get
             {
-                if (HasValidAttribute(IAttribute.AttributeType.Description.ToString(), 1))
+                string strKey = IAttribute.AttributeType.Description.ToString().ToUpper();
+                if (HasValidAttribute(strKey, 1))
                 {
-                    return m_mapAttributes![IAttribute.AttributeType.Description.ToString()].Values[2]
+                    return m_mapAttributes![strKey].Values[1]
                                 .Aggregate((a, b) => a + " " + b);
                 }
 
@@ -283,9 +285,10 @@ namespace CougarMessage.Parser.MessageTypes
         {
             get
             {
-                if (HasValidAttribute(IAttribute.AttributeType.Category.ToString(), 0))
+                string strKey = IAttribute.AttributeType.Category.ToString().ToUpper();
+                if (HasValidAttribute(strKey, 0))
                 {
-                    return m_mapAttributes![IAttribute.AttributeType.Category.ToString()].Values[0][0];
+                    return m_mapAttributes![strKey].Values[0][0];
                 }
 
                 return null;
@@ -296,9 +299,10 @@ namespace CougarMessage.Parser.MessageTypes
         {
             get
             {
-                if (HasValidAttribute(IAttribute.AttributeType.Generator.ToString(), 0))
+                string strKey = IAttribute.AttributeType.Generator.ToString().ToUpper();
+                if (HasValidAttribute(strKey, 0))
                 {
-                    return m_mapAttributes![IAttribute.AttributeType.Generator.ToString()].Values[0][0];
+                    return m_mapAttributes![strKey].Values[0][0];
                 }
 
                 return null;
@@ -314,9 +318,10 @@ namespace CougarMessage.Parser.MessageTypes
         {
             get
             {
-                if (HasValidAttribute(IAttribute.AttributeType.Consumer.ToString(), 0))
+                string strKey = IAttribute.AttributeType.Consumer.ToString().ToUpper();
+                if (HasValidAttribute(strKey, 0))
                 {
-                    return m_mapAttributes![IAttribute.AttributeType.Consumer.ToString()].Values[0][0];
+                    return m_mapAttributes![strKey].Values[0][0];
                 }
 
                 return null;
@@ -332,10 +337,11 @@ namespace CougarMessage.Parser.MessageTypes
         {
             get
             {
-                if (m_mapAttributes?.ContainsKey(IAttribute.AttributeType.WabFilter.ToString()) ?? false)
+                string strKey = IAttribute.AttributeType.WabFilter.ToString().ToUpper();
+                if (m_mapAttributes?.ContainsKey(strKey) ?? false)
                 {
                     WabFilterAttribute wabFilter =
-                        (WabFilterAttribute)m_mapAttributes[IAttribute.AttributeType.WabFilter.ToString()];
+                        (WabFilterAttribute)m_mapAttributes[strKey];
                     List<string> listFilters = new List<string>();
                     if (wabFilter.IsSite)
                     {
@@ -368,9 +374,10 @@ namespace CougarMessage.Parser.MessageTypes
         {
             get
             {
-                if (HasValidAttribute(IAttribute.AttributeType.AlertLevel.ToString(), 0))
+                string strKey = IAttribute.AttributeType.AlertLevel.ToString().ToUpper();
+                if (HasValidAttribute(strKey, 0))
                 {
-                    return m_mapAttributes![IAttribute.AttributeType.AlertLevel.ToString()].Values[0][0];
+                    return m_mapAttributes![strKey].Values[0][0];
                 }
 
                 return null;
@@ -381,10 +388,11 @@ namespace CougarMessage.Parser.MessageTypes
         {
             get
             {
-                if (m_mapAttributes?.ContainsKey(IAttribute.AttributeType.WabFilter.ToString()) ?? false)
+                string strKey = IAttribute.AttributeType.WabFilter.ToString().ToUpper();
+                if (m_mapAttributes?.ContainsKey(strKey) ?? false)
                 {
                     WabFilterAttribute wabFilter =
-                        (WabFilterAttribute)m_mapAttributes[IAttribute.AttributeType.WabFilter.ToString()];
+                        (WabFilterAttribute)m_mapAttributes[strKey];
                     return wabFilter.GetFilter();
                 }
 
@@ -396,9 +404,10 @@ namespace CougarMessage.Parser.MessageTypes
         {
             get
             {
-                if (m_mapAttributes?.ContainsKey(IAttribute.AttributeType.WabFilter.ToString()) ?? false)
+                string strKey = IAttribute.AttributeType.WabFilter.ToString().ToUpper();
+                if (m_mapAttributes?.ContainsKey(strKey) ?? false)
                 {
-                    return m_mapAttributes[IAttribute.AttributeType.WabFilter.ToString()];
+                    return m_mapAttributes[strKey];
                 }
 
                 return null;
@@ -409,9 +418,10 @@ namespace CougarMessage.Parser.MessageTypes
         {
             get
             {
-                if (HasValidAttribute(IAttribute.AttributeType.Reason.ToString(), 0))
+                string strKey = IAttribute.AttributeType.Reason.ToString().ToUpper();
+                if (HasValidAttribute(strKey, 0))
                 {
-                    return m_mapAttributes![IAttribute.AttributeType.Reason.ToString()].Values[0]
+                    return m_mapAttributes![strKey].Values[0]
                                 .Aggregate((a, b) => a + " " + b);
                 }
 

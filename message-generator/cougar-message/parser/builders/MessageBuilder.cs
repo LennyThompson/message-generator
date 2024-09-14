@@ -31,12 +31,12 @@ namespace CougarMessage.Parser.Builders
                 DoCompletion = (schemaBase) =>
                 {
                     var messageSchema = (IMessageSchema)schemaBase;
-                    var defineMessage = messageSchema.Defines()
-                        .FirstOrDefault(define => define.BaseName != null && define.BaseName.CompareTo(_messageBuild.BaseName()) == 0);
+                    var defineMessage = messageSchema.Defines
+                        .FirstOrDefault(define => define.BaseName != null && define.BaseName.CompareTo(_messageBuild.BaseName) == 0);
 
                     if (defineMessage != null)
                     {
-                        _messageBuild.SetDefine(defineMessage);
+                        _messageBuild.Define = defineMessage;
                     }
 
                     _messageBuild.UpdateVariableLengthArray();
@@ -96,22 +96,22 @@ namespace CougarMessage.Parser.Builders
 
         public override void EnterMessage_name(CougarParser.Message_nameContext ctx)
         {
-            _messageBuild.SetName(ctx.GetText());
+            _messageBuild.Name = ctx.GetText();
         }
 
         public override bool OnComplete(ParserObjectBuilder builderChild)
         {
-            if (!builderChild.Used())
+            if (!builderChild.Used)
             {
                 if (builderChild is IAttributeBuilder attributeBuilder)
                 {
-                    _messageBuild.AddAttribute(attributeBuilder.GetAttribute());
+                    _messageBuild.AddAttribute(attributeBuilder.Attribute);
                     builderChild.Used = true;
                 }
                 else if (builderChild is MemberBuilder memberBuilder)
                 {
                     _builderChildren.Add(builderChild);
-                    _messageBuild.AddMember(memberBuilder.GetMember());
+                    _messageBuild.AddMember(memberBuilder.Member);
                     builderChild.Used = true;
                 }
             }
