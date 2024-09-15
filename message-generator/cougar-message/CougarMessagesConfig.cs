@@ -6,6 +6,7 @@ using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using CougarMessage.Metadata;
 
 namespace CougarMessage
 {
@@ -178,7 +179,7 @@ namespace CougarMessage
                 if (!string.IsNullOrEmpty(m_strMongoMetaDataSrc) && File.Exists(m_strMongoMetaDataSrc))
                 {
                     string strJson = File.ReadAllText(m_strMongoMetaDataSrc);
-                    m_listMetaData = TypeMetaData.FromJson(strJson);
+                    m_listMetaData = TypeMetaData.FromJson(new JsonSerializerOptions(), strJson);
                 }
             }
             catch (IOException exc)

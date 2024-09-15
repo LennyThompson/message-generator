@@ -1,6 +1,7 @@
 using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CougarMessage;
 
 namespace Cougar
 {
@@ -19,11 +20,6 @@ namespace Cougar
         public CougarMessagesConfig MessagesConfig()
         {
             return MessageConfig;
-        }
-
-        public CougarApiConfig ApiConfig()
-        {
-            return ApiConfig;
         }
 
         public static CougarGenerateConfig FromJson(JsonSerializerOptions options, string strJson)

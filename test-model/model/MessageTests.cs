@@ -11,6 +11,18 @@ public class MessageTests
     public void TestSimpleMessage()
     {
         // #define JTP_NotifyJackpotHit								 95
+        // struct SEGMLocation
+        // {
+        // 	//@description	SEGMLocation | EGM Location |
+        // 	//				
+        // 	//@category		NONMESSAGE
+        // 	//@reason		
+        // 	//
+        // 	USHORT		m_usSiteID;					//@fielddesc	m_usSiteID | Site ID | EGM Site ID
+        // 	USHORT		m_usFloor;					//@fielddesc	m_usFloor | Floor | EGM Floor position
+        // 	USHORT		m_usBank;					//@fielddesc	m_usBank | Bank | EGM Bank position
+        // 	USHORT		m_usPosition;				//@fielddesc	m_usPosition | Position | EGM Position
+        // };
         // 
         // struct SNotifyJackpotHit
         // {
@@ -53,7 +65,14 @@ public class MessageTests
         numericDefine.NumericValue = 95;
         listDefines.Add(numericDefine);
 
-        Message message = new Message(1);
+        Message msgLocation = new Message(1);
+        msgLocation.Name = "SEGMLocation";
+        msgLocation.AddMember(new Member(){Name = "m_usSiteID", Type = "USHORT"});
+        msgLocation.AddMember(new Member(){Name = "m_usFloor", Type = "USHORT"});
+        msgLocation.AddMember(new Member(){Name = "m_usBank", Type = "USHORT"});
+        msgLocation.AddMember(new Member(){Name = "m_usPosition", Type = "USHORT"});
+        
+        Message message = new Message(2);
 
         message.Name = "SNotifyJackpotHit";
         
@@ -262,8 +281,12 @@ public class MessageTests
         message.Define = defineMessage;
         
         message.UpdateVariableLengthArray();
-     
-        Assert.That(message.Ordinal, Is.EqualTo(1));
+
+        IMember memberLocation = message.Members.First(mmbr => mmbr.Name == "m_location");
+        Assert.That(memberLocation, Is.Not.Null);
+        Assert.That(((Member)memberLocation).UpdateMemberType(strType => strType == msgLocation.Name ? msgLocation : null), Is.True);
+        
+        Assert.That(message.Ordinal, Is.EqualTo(2));
         Assert.That(message.Attributes.Count, Is.EqualTo(7));
         Assert.That(message.Define, Is.Not.Null);
         Assert.That(message.BaseName, Is.EqualTo("NotifyJackpotHit"));
@@ -274,5 +297,17 @@ public class MessageTests
         //Assert.That(message.HasValidAttribute(IAttribute.AttributeType.Description.ToString(), 0), Is.Not.Null);
         Assert.That(message.PrimaryDescription, Is.EqualTo("SNotifyJackpotHit"));
         Assert.That(message.ExtendedDescription, Is.EqualTo("Notify Jackpot Hit"));
+        Stack<IMember> stackMembers = new();
+        Assert.That
+        (
+            message.FindTopMostMember
+            (
+                member => member.Name.Contains("EGMSerialNumber"),
+                stackMembers
+            ), 
+            Is.True
+        );
+        Assert.That(stackMembers.Count, Is.EqualTo(1));
+        
     }
 }

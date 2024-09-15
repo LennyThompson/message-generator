@@ -6,9 +6,15 @@ using CougarMessage.Parser.MessageTypes.Interfaces;
 
 namespace CougarMessage.Parser.MessageTypes
 {
+    public delegate IMessage? TypeFinderFn(string strTypeName);
+    public delegate IEnum? EnumFinderFn(string strTypeName);
     public class Member : IMember
     {
-        private enum AttributeKeys { FIELDDESC }
+        private enum AttributeKeys
+        {
+            FIELDDESC
+        }
+
         private const string DYNAMIC_ARRAY_SIZE = "JTP_VARIABLE_SIZE_ARRAY";
         private const string MEMBER_PREFIX = "m_";
         private string m_strName = "";
@@ -43,6 +49,7 @@ namespace CougarMessage.Parser.MessageTypes
             {
                 m_mapAttributes = new Dictionary<string, IAttribute>();
             }
+
             m_mapAttributes[attrAdd.Name.ToUpper()] = attrAdd;
         }
 
@@ -60,6 +67,7 @@ namespace CougarMessage.Parser.MessageTypes
                 {
                     return Name.Substring(2);
                 }
+
                 return Name;
             }
         }
@@ -75,14 +83,15 @@ namespace CougarMessage.Parser.MessageTypes
                         .Select(m => m.Value)
                         .ToList();
                     m_strStrippedName = string.Concat
-                        (
-                            listParts.Where(part => char.IsUpper(part[0]))
-                        );
+                    (
+                        listParts.Where(part => char.IsUpper(part[0]))
+                    );
                     if (string.IsNullOrEmpty(m_strStrippedName))
                     {
                         m_strStrippedName = char.ToUpper(ShortName[0]) + ShortName.Substring(1);
                     }
                 }
+
                 return m_strStrippedName;
             }
             set => m_strStrippedName = value;
@@ -132,6 +141,7 @@ namespace CougarMessage.Parser.MessageTypes
             get => m_strArraySize;
             set => SetArraySize(value);
         }
+
         private void SetArraySize(string? strSize)
         {
             if (strSize != null)
@@ -142,7 +152,7 @@ namespace CougarMessage.Parser.MessageTypes
                 {
                     m_nArraySize = int.Parse(m_strArraySize);
                 }
-                catch (Exception )
+                catch (Exception)
                 {
                     if (String.Compare(m_strArraySize!, DYNAMIC_ARRAY_SIZE, StringComparison.Ordinal) == 0)
                     {
@@ -158,7 +168,7 @@ namespace CougarMessage.Parser.MessageTypes
                             .Select(int.Parse)
                             .Sum();
                     }
-                    catch (Exception )
+                    catch (Exception)
                     {
                     }
                 }
@@ -177,6 +187,28 @@ namespace CougarMessage.Parser.MessageTypes
         public List<IAttribute>? Attributes
         {
             get => m_mapAttributes?.Values.ToList() ?? null;
+        }
+
+        public bool UpdateMemberType(TypeFinderFn fnTypeFinder)
+        {
+            IMessage? msgType = fnTypeFinder(Type);
+            if (msgType != null)
+            {
+                m_messageType = msgType;
+                return true;
+            }
+            return false;
+        }
+
+        public bool UpdateMemberType(EnumFinderFn fnEnumFinder)
+        {
+            IEnum? enumType = fnEnumFinder(Type);
+            if (enumType != null)
+            {
+                m_enumType = enumType;
+                return true;
+            }
+            return false;
         }
 
         public int OriginalByteSize
@@ -221,8 +253,10 @@ namespace CougarMessage.Parser.MessageTypes
                         {
                             nSizeReturn = MessageType.MessageByteSize;
                         }
+
                         break;
                 }
+
                 if (IsArray)
                 {
                     nSizeReturn *= NumericArraySize;
@@ -236,15 +270,15 @@ namespace CougarMessage.Parser.MessageTypes
         {
             get
             {
-                if 
+                if
                 (
-                    (m_mapAttributes?.ContainsKey(AttributeKeys.FIELDDESC.ToString()) ?? false) 
+                    (m_mapAttributes?.ContainsKey(AttributeKeys.FIELDDESC.ToString()) ?? false)
                     &&
                     m_mapAttributes[AttributeKeys.FIELDDESC.ToString()].Values.Count > 0
                 )
                 {
                     return ((IFielddescAttribute)(m_mapAttributes[AttributeKeys.FIELDDESC.ToString()]))
-                                .ShortDescription;
+                        .ShortDescription;
                 }
 
                 return null;
@@ -322,6 +356,7 @@ namespace CougarMessage.Parser.MessageTypes
                     {
                         strPrefix = char.ToUpper(strPrefix[0]) + strPrefix.Substring(1);
                     }
+
                     member.StrippedName = strPrefix + member.StrippedName;
                     break;
             }
@@ -382,5 +417,6 @@ namespace CougarMessage.Parser.MessageTypes
             }
         }
     }
+
 }
 
