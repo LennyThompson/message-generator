@@ -1,2 +1,5 @@
 /messages-parser/grammar/messages/gen/
-
+**/bin/**/*
+**/obj/**/*
+.idea
+*.user
