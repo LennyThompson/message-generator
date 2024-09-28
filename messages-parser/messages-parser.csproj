@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <RootNamespace>messages_parser</RootNamespace>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Content Include="./grammar/messages/CougarLexer.g4"/>
+        <Content Include="./grammar/messages/CougarParser.g4"/>
+    </ItemGroup>
+    
+    <ItemGroup>
+      <Folder Include="grammar\messages\gen\" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+    </ItemGroup>
+
+</Project>
