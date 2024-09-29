@@ -42,7 +42,6 @@ public class MessageSchemaAdapter
     private string m_strNextMessageFnName = GET_MESSAGE_FINDER_EX;
     private int m_nSplitGroupIndex = -1;
     private List<string> m_listMessageFns;
-    private string m_strPackageName;
 
     public MessageSchemaAdapter(IMessageSchema schemaAdapt)
     {
@@ -56,8 +55,8 @@ public class MessageSchemaAdapter
         m_nMessageStartIndex = nStartIndex;
         m_nMessageEndIndex = nEndIndex;
         m_listMessages = Enumerable.Range(m_nMessageStartIndex, m_nMessageEndIndex - m_nMessageStartIndex)
-            .Select(index => m_messageSchema.Messages()[index])
-            .Select(MessageAdapterFactory.CreateMessageAdapter)
+            .Select(index => m_messageSchema.Messages[index])
+            .Select(message => MessageAdapterFactory.CreateMessageAdapter(message))
             .ToList();
         m_nSplitGroupIndex++;
         if (m_nSplitGroupIndex > 0)
@@ -66,38 +65,26 @@ public class MessageSchemaAdapter
             m_listMessageFns.Add(m_strCurrentMessageFnName);
             m_strNextMessageFnName = GET_MESSAGE_FINDER_EX + m_nSplitGroupIndex;
         }
-        if (m_nMessageEndIndex == m_messageSchema.Messages().Count)
+        if (m_nMessageEndIndex == m_messageSchema.Messages.Count)
         {
             m_strNextMessageFnName = "";
         }
     }
 
-    public void SetPackageName(string strPackageName)
+    public string PackageName
     {
-        m_strPackageName = strPackageName;
+        get;
+        set;
     }
-    public string GetPackageName()
-    {
-        return m_strPackageName;
-    }
+    public List<MessageAdapter> Messages => MessageAdapterFactory.CreateMessageAdapters(m_messageSchema);
 
-    public List<MessageAdapter> GetMessages()
-    {
-        return MessageAdapterFactory.CreateMessageAdapters(m_messageSchema);
-    }
-
-    public List<MessageAdapter> GetNonDependentMessages()
-    {
-        return MessageAdapterFactory.CreateMessageAdapters(m_messageSchema)
-                .Where(MessageAdapter.GetHasDefine)
-                .Where(messageAdapter => !messageAdapter.GetHasMessageTypeMember())
-                .OrderBy(MessageAdapter.GetDefineId)
+    public List<MessageAdapter> NonDependentMessages => MessageAdapterFactory.CreateMessageAdapters(m_messageSchema)
+                .Where(MessageAdapter.HasDefine)
+                .Where(messageAdapter => !messageAdapter.HasMessageTypeMember)
+                .OrderBy(MessageAdapter.DefineId)
                 .ToList();
-    }
 
-    public List<MessageAdapter> GetDependentMessages()
-    {
-        return MessageAdapterFactory.CreateMessageAdapters(m_messageSchema)
+    public List<MessageAdapter> DependentMessages => MessageAdapterFactory.CreateMessageAdapters(m_messageSchema)
                 .Where(MessageAdapter.GetHasDefine)
                 .Where(MessageAdapter.GetHasMessageTypeMember)
                 .Where(msg => !msg.GetHasDependentMessages())

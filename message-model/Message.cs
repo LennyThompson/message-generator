@@ -139,19 +139,19 @@ namespace CougarMessage.Parser.MessageTypes
             (
                 member =>
                 {
-                    stackMembers.Push(member);
                     if (memberTest(member))
                     {
+                        stackMembers.Push(member);
                         return true;
                     }
                     else if (member.MessageType != null)
                     {
-                        if (member.MessageType.FindMember(memberTest, stackMembers))
+                        if (member.MessageType.FindTopMostMember(memberTest, stackMembers))
                         {
+                            stackMembers.Push(member);
                             return true;
                         }
                     }
-                    stackMembers.Pop();
                     return false;
                 }
             );
@@ -251,7 +251,7 @@ namespace CougarMessage.Parser.MessageTypes
             }
         }
 
-        public string? PrimaryDescription
+        public string? Description
         {
             get
             {
@@ -259,6 +259,21 @@ namespace CougarMessage.Parser.MessageTypes
                 if (HasValidAttribute(strKey, 0))
                 {
                     return m_mapAttributes![strKey].Values[0]
+                        .Aggregate((a, b) => a + " " + b);
+                }
+
+                return null;
+            }
+        }
+
+        public string? PrimaryDescription
+        {
+            get
+            {
+                string strKey = IAttribute.AttributeType.Description.ToString().ToUpper();
+                if (HasValidAttribute(strKey, 1))
+                {
+                    return m_mapAttributes![strKey].Values[1]
                                 .Aggregate((a, b) => a + " " + b);
                 }
 
@@ -271,9 +286,9 @@ namespace CougarMessage.Parser.MessageTypes
             get
             {
                 string strKey = IAttribute.AttributeType.Description.ToString().ToUpper();
-                if (HasValidAttribute(strKey, 1))
+                if (HasValidAttribute(strKey, 2))
                 {
-                    return m_mapAttributes![strKey].Values[1]
+                    return m_mapAttributes![strKey].Values[2]
                                 .Aggregate((a, b) => a + " " + b);
                 }
 

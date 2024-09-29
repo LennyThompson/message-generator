@@ -10,6 +10,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "test-model", "test-model\te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "message-builder", "message-builder\message-builder.csproj", "{15038537-F971-4022-9867-B062F24ED66E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "test-builders", "test-builders\test-builders.csproj", "{6CE99E53-8715-4127-8DBB-EF4E4DF55F35}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "message-adapter", "message-adapter\message-adapter.csproj", "{D4801A28-3298-4A96-9765-7FAD944C44D1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +40,13 @@ Global
 		{15038537-F971-4022-9867-B062F24ED66E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{15038537-F971-4022-9867-B062F24ED66E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{15038537-F971-4022-9867-B062F24ED66E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6CE99E53-8715-4127-8DBB-EF4E4DF55F35}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6CE99E53-8715-4127-8DBB-EF4E4DF55F35}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6CE99E53-8715-4127-8DBB-EF4E4DF55F35}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6CE99E53-8715-4127-8DBB-EF4E4DF55F35}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D4801A28-3298-4A96-9765-7FAD944C44D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4801A28-3298-4A96-9765-7FAD944C44D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4801A28-3298-4A96-9765-7FAD944C44D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4801A28-3298-4A96-9765-7FAD944C44D1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -15,21 +15,13 @@ namespace CougarMessage.Adapter
             _attrAdapt = attrAdapt;
         }
 
-        public string GetName()
-        {
-            return _attrAdapt.Name;
-        }
+        public IAttribute AttrAdapt => _attrAdapt;
+        public string Name => _attrAdapt.Name;
 
-        public List<string> GetValues()
-        {
-            return _attrAdapt.Values()
+        public List<string> Values =>_attrAdapt.Values
                 .Select(value => string.Join(" ", value))
                 .ToList();
-        }
 
-        public IAttribute.AttributeType GetType()
-        {
-            return _attrAdapt.Type();
-        }
+        public IAttribute.AttributeType Type => _attrAdapt.Type;
     }
 }

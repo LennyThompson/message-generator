@@ -24,7 +24,6 @@ namespace CougarMessage.Parser.Builders
             if (m_listValues.Count > 0)
             {
                 Attribute.Values.Add(m_listValues);
-                m_listValues.Clear();
             }
         }
 

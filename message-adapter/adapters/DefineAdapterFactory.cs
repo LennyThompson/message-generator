@@ -14,7 +14,7 @@ namespace CougarMessage.Adapter
 
         public static List<DefineAdapter> CreateDefineAdapters(IMessageSchema schemaFrom)
         {
-            return schemaFrom.Defines().Select(CreateDefineAdapter).ToList();
+            return schemaFrom.Defines.Select(CreateDefineAdapter).ToList();
         }
     }
 }

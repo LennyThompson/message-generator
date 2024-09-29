@@ -11,17 +11,17 @@ namespace CougarMessage.Adapter
 
         public string GetFieldName()
         {
-            return ((IFielddescAttribute)AttrAdapt).FieldName();
+            return ((IFielddescAttribute)AttrAdapt).FieldName;
         }
 
         public string GetShortDescription()
         {
-            return ((IFielddescAttribute)AttrAdapt).ShortDescription();
+            return ((IFielddescAttribute)AttrAdapt).ShortDescription;
         }
 
         public string GetLongDescription()
         {
-            return ((IFielddescAttribute)AttrAdapt).LongDescription();
+            return ((IFielddescAttribute)AttrAdapt).LongDescription;
         }
     }
 }

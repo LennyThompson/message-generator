@@ -287,7 +287,7 @@ public class MessageTests
         Assert.That(((Member)memberLocation).UpdateMemberType(strType => strType == msgLocation.Name ? msgLocation : null), Is.True);
         
         Assert.That(message.Ordinal, Is.EqualTo(2));
-        Assert.That(message.Attributes.Count, Is.EqualTo(7));
+        Assert.That(message.Attributes?.Count, Is.EqualTo(7));
         Assert.That(message.Define, Is.Not.Null);
         Assert.That(message.BaseName, Is.EqualTo("NotifyJackpotHit"));
         Assert.That(message.Members.Count, Is.EqualTo(10));
@@ -295,8 +295,8 @@ public class MessageTests
         Assert.That(message.HasStrippedNameMemberClash, Is.False);
         
         //Assert.That(message.HasValidAttribute(IAttribute.AttributeType.Description.ToString(), 0), Is.Not.Null);
-        Assert.That(message.PrimaryDescription, Is.EqualTo("SNotifyJackpotHit"));
-        Assert.That(message.ExtendedDescription, Is.EqualTo("Notify Jackpot Hit"));
+        Assert.That(message.Description, Is.EqualTo("SNotifyJackpotHit"));
+        Assert.That(message.PrimaryDescription, Is.EqualTo("Notify Jackpot Hit"));
         Stack<IMember> stackMembers = new();
         Assert.That
         (
