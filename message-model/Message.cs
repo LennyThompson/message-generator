@@ -524,15 +524,9 @@ namespace CougarMessage.Parser.MessageTypes
             m_listTraceMembers.Add(traceAssociation);
         }
 
-        public List<TraceAssociation>? TraceMembers
-        {
-            get => m_listTraceMembers;
-        }
+        public List<TraceAssociation>? TraceMembers => m_listTraceMembers;
 
-        public ExternalKeyGenerator? ExternalKey
-        {
-            get => m_externalKey;
-        }
+        public ExternalKeyGenerator? ExternalKey => m_externalKey;
 
         public TimestampFilter? TimestampFilter
         {

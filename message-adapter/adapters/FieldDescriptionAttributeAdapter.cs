@@ -9,19 +9,8 @@ namespace CougarMessage.Adapter
         {
         }
 
-        public string GetFieldName()
-        {
-            return ((IFielddescAttribute)AttrAdapt).FieldName;
-        }
-
-        public string GetShortDescription()
-        {
-            return ((IFielddescAttribute)AttrAdapt).ShortDescription;
-        }
-
-        public string GetLongDescription()
-        {
-            return ((IFielddescAttribute)AttrAdapt).LongDescription;
-        }
+        public string FieldName =>  ((IFielddescAttribute)AttrAdapt).FieldName;
+        public string ShortDescription => ((IFielddescAttribute)AttrAdapt).ShortDescription;
+        public string LongDescription => ((IFielddescAttribute)AttrAdapt).LongDescription;
     }
 }

@@ -5,35 +5,13 @@ using System.Text.Json;
 using System.Collections.Concurrent;
 using System.Threading;
 using Cougar.Utils;
+using CougarMessage.Adapter;
 using CougarMessage.Metadata;
+using CougarMessage.Parser.MessageTypes;
 using CougarMessage.Parser.MessageTypes.Interfaces;
 
 namespace CougarMessage.Adapter
 {
-    class MessageInstance
-    {
-        IMessage m_messageInstance;
-
-        public MessageInstance(IMessage messageInstance)
-        {
-            Instance = messageInstance;
-        }
-
-        public IMessage Instance
-        {
-            get => m_messageInstance;
-            set => m_messageInstance = value;
-        }
-    }
-
-    public interface IDefineAdapter
-    {
-        string Name => ;
-        int Value => ;
-        string MemberName => ;
-        string PostFix => ;
-    }
-
     public class MessageAdapter
     {
         protected IMessage m_messageAdapt;
@@ -131,7 +109,7 @@ namespace CougarMessage.Adapter
             }
         }
 
-        public bool HasEnumTypeMember => m_listMembers.Any(member => member.HasEnumType));
+        public bool HasEnumTypeMember => m_listMembers.Any(member => member.HasEnumType);
 
         public bool HasMembers =>m_listMembers.Count > 0;
 
@@ -209,19 +187,19 @@ namespace CougarMessage.Adapter
             }
         }
 
-        public bool HasSiteIdMember => GetHasMember(SITE_ID, SITE_ID_MEMBER);
+        public bool HasSiteIdMember => HasMember(SITE_ID, SITE_ID_MEMBER);
 
         public List<MemberAdapter> SiteIdMember => GetMemberByName(SITE_ID, SITE_ID_MEMBER);
 
-        public bool HasCssSiteIdMember => GetHasMember(CSS_SITE_ID, CSS_SITE_ID_MEMBER);
+        public bool HasCssSiteIdMember => HasMember(CSS_SITE_ID, CSS_SITE_ID_MEMBER);
 
         public List<MemberAdapter> CssSiteIdMember => GetMemberByName(CSS_SITE_ID, CSS_SITE_ID_MEMBER);
 
-        public bool HasCardIdMember => GetHasMember(CARD_ID, CARD_ID_MEMBER);
+        public bool HasCardIdMember => HasMember(CARD_ID, CARD_ID_MEMBER);
 
         public List<MemberAdapter> CardIdMember => GetMemberByName(CARD_ID, CARD_ID_MEMBER);
 
-        private bool GetHasMember(string strDescription, string strName)
+        public bool HasMember(string strDescription, string strName)
         {
             Stack<IMember> stackMembers = new Stack<IMember>();
             return m_messageAdapt.FindTopMostMember(
@@ -230,11 +208,11 @@ namespace CougarMessage.Adapter
                 );
         }
 
-        private List<MemberAdapter> GetMemberByName(string strDescription, string strName)
+        public List<MemberAdapter> GetMemberByName(string strDescription, string strName)
         {
             Stack<MemberAdapter> stackMembers = new Stack<MemberAdapter>();
             if (FindTopMostMember(
-                    member => member.ShortFieldDescription.Contains(strDescription) || member.Name.CompareTo(strName) == 0 || member.StrippedName.CompareTo(strName) == 0,
+                    member => (member.HasFieldDescriptionAttribute ? member.FieldDescriptionAttribute!.ShortDescription.Contains(strDescription) : false) || member.Name.CompareTo(strName) == 0 || member.StrippedName.CompareTo(strName) == 0,
                     stackMembers
                 ))
             {
@@ -276,7 +254,7 @@ namespace CougarMessage.Adapter
             }
         }
 
-        public List<MemberAdapter> EgmSerialNumberMember
+        public List<MemberAdapter?> EgmSerialNumberMember
         {
             get
             {
@@ -486,7 +464,7 @@ namespace CougarMessage.Adapter
             }
         }
 
-        public bool IsSITEFilter => ((IWabFilterAttribute)m_messageAdapt.WabFilterAttribute).IsSite();
+        public bool IsSITEFilter => ((IWabFilterAttribute)m_messageAdapt.WabFilterAttribute).IsSite;
 
         public bool HasSITEMemberFilter
         {
@@ -544,22 +522,13 @@ namespace CougarMessage.Adapter
             }
         }
 
-        private IMember GetTargetMember(IWabFilterAttribute.IWabFilterTarget target)
+        private IMember? GetTargetMember(IWabFilterAttribute.IWabFilterTarget target)
         {
-            var instance = new MessageInstance(m_messageAdapt);
             var listPath = target.MemberPath
                 .Select(path =>
                 {
-                    var member = instance.Instance.Members
-                        .FirstOrDefault(member => 
-                        {
-                            if (member.Name.CompareTo(path) == 0)
-                            {
-                                instance.SetInstance(member.MessageType());
-                                return true;
-                            }
-                            return false;
-                        });
+                    var member = m_messageAdapt.Members
+                        .FirstOrDefault(member => member.Name == path);
                     return member;
                 })
                 .ToList();
@@ -569,21 +538,12 @@ namespace CougarMessage.Adapter
 
         private int GetByteOffsetToTargetMember(IWabFilterAttribute.IWabFilterTarget target)
         {
-            var instance = new MessageInstance(m_messageAdapt);
             return target.MemberPath
                 .Select(path =>
                 {
-                    return instance.Instance.Members
-                        .TakeWhile(member =>
-                        {
-                            if (member.Name.CompareTo(path) != 0)
-                            {
-                                return true;
-                            }
-                            instance.SetInstance(member.MessageType());
-                            return false;
-                        })
-                        .Sum(member => member.OriginalByteSize());
+                    return m_messageAdapt.Members
+                        .TakeWhile(member => member.Name != path)
+                        .Sum(member => member.OriginalByteSize);
                 })
                 .Sum();
         }
@@ -614,192 +574,73 @@ namespace CougarMessage.Adapter
 
         public string JavaInterfaceName => "I" + PlainName;
 
-        public List<IDefineAdapter> MemberDefines => 
-        {
-            return Members => 
+        public List<DefineAdapter> MemberDefines => Members
                 .Where(member => member.HasArraySizeDefine)
-                .Select(member => member.BuildArraySizeDefine(m_messageAdapt.Members()))
+                .Select(member => member.BuildArraySizeDefine(m_messageAdapt.Members))
                 .ToList();
-        }
 
-        public bool HasGeneratedMessages => 
-        {
-            return m_messageAdapt.GetGeneratedMessages().Any();
-        }
+        public bool HasGeneratedMessages => m_messageAdapt.GeneratedMessages.Any();
 
-        public List<MessageAdapter> GeneratedMessages => 
-        {
-            return m_messageAdapt.GetGeneratedMessages()
+        public List<MessageAdapter> GeneratedMessages => m_messageAdapt.GeneratedMessages
                 .Select(MessageAdapterFactory.CreateMessageAdapter)
                 .ToList();
-        }
 
-        public bool HasTraceMembers => 
-        {
-            return m_messageAdapt.TraceMembers().Any();
-        }
+        public bool HasTraceMembers => m_messageAdapt.TraceMembers.Any();
 
-        public interface ITraceMemberJsonAdapter
-        {
-            bool? HasExternalKey => ;
-            string ExternalKey => ;
-            string JsonPath => ;
-        }
-
-        public interface IMemberPathAdapter
-        {
-            MessageAdapter GeneratedMessage => ;
-            bool IsSameMessageAsGenerator => ;
-            List<ITraceMemberJsonAdapter> TraceMemberJsonPath => ;
-        }
-
-        public List<string> TraceMemberValuePaths => 
-        {
-            return m_messageAdapt.TraceMembers()
+        public List<string> TraceMemberValuePaths => m_messageAdapt.TraceMembers
                 .Select(traceAssoc =>
                 {
-                    if (traceAssoc.GetSource().CompareTo(EXTERNAL_KEY) == 0)
+                    if (traceAssoc.Source.CompareTo(EXTERNAL_KEY) == 0)
                     {
                         return EXTERNAL_KEY;
                     }
                     else
                     {
-                        if (GetHasMember(traceAssoc.GetSource(), traceAssoc.GetSource()))
+                        if (HasMember(traceAssoc.Source, traceAssoc.Source))
                         {
-                            return "value." + string.Join(".", GetMemberByName(traceAssoc.GetSource(), traceAssoc.GetSource()).Select(MemberAdapter.GetStrippedName));
+                            return "value." + string.Join(".", GetMemberByName(traceAssoc.Source, traceAssoc.Source).Select(memberAdapt => memberAdapt.StrippedName));
                         }
                     }
                     return "";
                 })
                 .Where(path => !string.IsNullOrEmpty(path))
                 .ToList();
-        }
 
-        public interface IExternalKeyAdapter
-        {
-            bool HasExternalKey => ;
-            string ExternalKey => ;
-            string KeySnippet => ;
-        }
 
-        public bool HasExternalKey => 
-        {
-            return m_messageAdapt.ExternalKey() != null;
-        }
+        public bool HasExternalKey => m_messageAdapt.ExternalKey != null;
 
-        public IExternalKeyAdapter ExternalKey => 
+        public ExternalKeyAdapter ExternalKeyAdapter => new ExternalKeyAdapter(this);
+
+        public bool HasAdditionalAttribute => m_typeData.AdditionalAttr != null;
+
+        public string AdditionalAttribute => HasAdditionalAttribute ? m_typeData.AdditionalAttr.Name + "(" + string.Join(", ", m_typeData.AdditionalAttr.Parameters) + ")" : "*Error no attribute*";
+
+        public bool UseTimestampRange(MessageAdapter msgAdapt)
         {
-            return new IExternalKeyAdapter()
+            return m_messageAdapt.GetUseTimestampRange(msgAdapt.m_messageAdapt);
+        }
+        
+        public List<TraceAssociation>? TraceMembers => m_messageAdapt.TraceMembers;
+
+        public ExternalKeyGenerator? ExternalKey => m_messageAdapt.ExternalKey;
+
+        public List<MemberPathAdapter> TraceMemberPaths
+        {
+            get
             {
-                public bool HasExternalKey =>  => m_messageAdapt.ExternalKey() != null;
-
-                public string ExternalKey =>  => m_messageAdapt.ExternalKey().Name;
-
-                public string KeySnippet =>  => m_messageAdapt.ExternalKey().GetSnippet();
-            };
-        }
-
-        public bool HasAdditionalAttribute => 
-        {
-            return m_typeData.GetAdditionalAttr() != null;
-        }
-
-        public string AdditionalAttribute => 
-        {
-            if (GetHasAdditionalAttribute())
-            {
-                return m_typeData.GetAdditionalAttr().Name + "(" + string.Join(", ", m_typeData.GetAdditionalAttr().GetParameters()) + ")";
-            }
-            return "*Error no attribute*";
-        }
-
-        public List<IMemberPathAdapter> TraceMemberPaths => 
-        {
-            if (GetHasGeneratedMessages() && HasTraceMembers => )
-            {
-                return GeneratedMessages => 
-                    .Select(message =>
-                    {
-                        return new IMemberPathAdapter()
-                        {
-                            public MessageAdapter GeneratedMessage =>  => message;
-
-                            public bool IsSameMessageAsGenerator =>  => message.m_messageAdapt.Name.CompareTo(m_messageAdapt.Name()) == 0;
-
-                            public List<ITraceMemberJsonAdapter> TraceMemberJsonPath => 
-                            {
-                                var listAdapters = new List<ITraceMemberJsonAdapter>
-                                {
-                                    new ITraceMemberJsonAdapter()
-                                    {
-                                        public bool? HasExternalKey =>  => false;
-
-                                        public string ExternalKey =>  => null;
-
-                                        public string JsonPath => 
-                                        {
-                                            if (m_messageAdapt.GetUseTimestampRange(message.m_messageAdapt))
-                                            {
-                                                return "\"_timestamp\" : { $gte : timestampFrom, $lt : timestampTo }";
-                                            }
-                                            else
-                                            {
-                                                return "\"_timestamp\" : { $gte : timestampFrom }";
-                                            }
-                                        }
-                                    }
-                                };
-
-                                listAdapters.AddRange(
-                                    m_messageAdapt.TraceMembers()
-                                    .Select(memberAssoc =>
-                                    {
-                                        var strExtKey = m_messageAdapt.ExternalKey() != null ? m_messageAdapt.ExternalKey().Name : "";
-                                        return new ITraceMemberJsonAdapter()
-                                        {
-                                            public bool? HasExternalKey =>  => !string.IsNullOrEmpty(strExtKey);
-
-                                            public string ExternalKey =>  => strExtKey;
-
-                                            public string JsonPath => 
-                                            {
-                                                string strThisPath = "****error****";
-                                                if (memberAssoc.GetSource().CompareTo(EXTERNAL_KEY) == 0)
-                                                {
-                                                    strThisPath = strExtKey;
-                                                }
-                                                else if (GetHasMember(memberAssoc.GetSource(), memberAssoc.GetSource()))
-                                                {
-                                                    strThisPath = "value." + string.Join(".", GetMemberByName(memberAssoc.GetSource(), memberAssoc.GetSource()).Select(MemberAdapter.GetStrippedName));
-                                                }
-                                                string strJsonPath = "";
-                                                var strMemberName = memberAssoc.GetDestiniations()
-                                                    .FirstOrDefault(name => message.GetHasMember(name, name));
-                                                if (!string.IsNullOrEmpty(strMemberName))
-                                                {
-                                                    strJsonPath = "\"" + string.Join(".", message.GetMemberByName(strMemberName, strMemberName).Select(MemberAdapter.GetStrippedName)) + "\" : " + strThisPath;
-                                                }
-                                                return strJsonPath;
-                                            }
-                                        };
-                                    })
-                                    .Where(path => !string.IsNullOrEmpty(path.GetJsonPath()))
-                                    .ToList()
-                                );
-
-                                return listAdapters;
-                            }
-                        };
-                    })
-                    .ToList();
-            }
-            else
-            {
-                return new List<IMemberPathAdapter>();
+                if (HasGeneratedMessages && HasTraceMembers)
+                {
+                    return GeneratedMessages
+                        .Select(message => new MemberPathAdapter(message, this))
+                        .ToList();
+                }
+                else
+                {
+                    return new List<MemberPathAdapter>();
+                }
             }
         }
     }
 }
 
-}
 

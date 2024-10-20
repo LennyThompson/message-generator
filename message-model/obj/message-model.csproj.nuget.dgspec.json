@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/home/lenny/dev/csharp/message-generator/message-model/message-model.csproj": {}
+    "/mnt/xfs-2/dev/csharp/message-generator/message-model/message-model.csproj": {}
   },
   "projects": {
-    "/home/lenny/dev/csharp/message-generator/message-model/message-model.csproj": {
+    "/mnt/xfs-2/dev/csharp/message-generator/message-model/message-model.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/lenny/dev/csharp/message-generator/message-model/message-model.csproj",
+        "projectUniqueName": "/mnt/xfs-2/dev/csharp/message-generator/message-model/message-model.csproj",
         "projectName": "message-model",
-        "projectPath": "/home/lenny/dev/csharp/message-generator/message-model/message-model.csproj",
+        "projectPath": "/mnt/xfs-2/dev/csharp/message-generator/message-model/message-model.csproj",
         "packagesPath": "/home/lenny/.nuget/packages/",
-        "outputPath": "/home/lenny/dev/csharp/message-generator/message-model/obj/",
+        "outputPath": "/mnt/xfs-2/dev/csharp/message-generator/message-model/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/home/lenny/.nuget/NuGet/NuGet.Config"
@@ -32,16 +32,21 @@
           "warnAsError": [
             "NU1605"
           ]
-        },
-        "restoreAuditProperties": {
-          "enableAudit": "true",
-          "auditLevel": "low",
-          "auditMode": "direct"
         }
       },
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
+          "dependencies": {
+            "Microsoft.Extensions.Logging": {
+              "target": "Package",
+              "version": "[8.0.1, )"
+            },
+            "Microsoft.Extensions.Logging.Console": {
+              "target": "Package",
+              "version": "[8.0.1, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",
@@ -58,7 +63,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/home/lenny/.dotnet/sdk/8.0.303/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/lib64/dotnet/sdk/8.0.108/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

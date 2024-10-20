@@ -18,6 +18,8 @@
     
     <ItemGroup>
       <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+      <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.1" />
     </ItemGroup>
 
 </Project>

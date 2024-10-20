@@ -10,6 +10,6 @@ namespace CougarMessage.Adapter
         {
         }
 
-        public override bool IsNonMessage => true;
+        public bool IsNonMessage => true;
     }
 }

@@ -13,11 +13,11 @@ namespace CougarMessage.Adapter
         private MemberAdapter _memberArraySizeAdapter;
 
         public VariableArrayMemberAdapter(IVariableArrayMember memberAdapt, List<MessageAdapter> listMessages)
-            : base(memberAdapt.ArrayMember(), listMessages)
+            : base(memberAdapt.ArrayMember, listMessages)
         {
-            if (memberAdapt.ArraySizeMember().Name != Message.ERROR_ARRAY_SIZE_MEMBER)
+            if (memberAdapt.ArraySizeMember.Name != Message.ERROR_ARRAY_SIZE_MEMBER)
             {
-                _memberArraySizeAdapter = MemberAdapterFactory.CreateMemberAdapter(memberAdapt.ArraySizeMember(), listMessages);
+                _memberArraySizeAdapter = MemberAdapterFactory.CreateMemberAdapter(memberAdapt.ArraySizeMember, listMessages);
             }
         }
 
@@ -35,7 +35,7 @@ namespace CougarMessage.Adapter
             {
                 if (_memberArraySizeAdapter == null)
                 {
-                    return base.ArraySize();
+                    return base.ArraySize;
                 }
                 return _memberArraySizeAdapter.Name;
             }
@@ -45,7 +45,7 @@ namespace CougarMessage.Adapter
         {
             get
             {
-                switch (MemberAdapt.Type.ToUpper())
+                switch (m_memberAdapt.Type.ToUpper())
                 {
                     case "CHAR":
                         return false;
@@ -59,7 +59,7 @@ namespace CougarMessage.Adapter
         {
             get
             {
-                switch (MemberAdapt.Type.ToUpper())
+                switch (m_memberAdapt.Type.ToUpper())
                 {
                     case "CHAR":
                         return true;
@@ -69,21 +69,21 @@ namespace CougarMessage.Adapter
             }
         }
 
-        public override string GetCSharpType()
+        public string CSharpType
         {
-            switch (MemberAdapt.Type.ToUpper())
+            get
             {
-                case "CHAR":
-                    return "string";
-                default:
-                    return base.GetCSharpType();
+                switch (m_memberAdapt.Type.ToUpper())
+                {
+                    case "CHAR":
+                        return "string";
+                    default:
+                        return base.CSharpType;
+                }
             }
         }
 
-        public string GetCppArrayType()
-        {
-            return IsString ? "string" : "List<>";
-        }
+        public string CppArrayType=> IsString ? "string" : "List<>";
 
         public bool IsParameterString => IsString;
 
@@ -91,7 +91,7 @@ namespace CougarMessage.Adapter
 
         public string GetCppType()
         {
-            return IsString ? "string" : base.GetCppType();
+            return IsString ? "string" : base.CppType;
         }
 
         public string GetCppFullType()
@@ -110,7 +110,7 @@ namespace CougarMessage.Adapter
 
             if (HasMessageType)
             {
-                returnType = GetMessageType().GetPointerType();
+                returnType = MessageType.PointerType;
                 returnType = $"List<{returnType}>";
             }
             return $"{returnType}";

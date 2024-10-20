@@ -3,17 +3,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CougarMessage.Metadata;
+using CougarMessage.Parser.MessageTypes.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace CougarMessage.Adapter
 {
     public class MessageAdapterFactory
     {
-        private static readonly ILogger<MessageAdapterFactory> _log = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<MessageAdapterFactory>();
-
+        //TODO: make this a DI dependency
+        static private ILogger _log = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger("MessageAdapterFactory");
         public static MessageAdapter CreateMessageAdapter(IMessage messageAdapt)
         {
-            if (messageAdapt.IsNonMessage())
+            if (messageAdapt.IsNonMessage)
             {
                 return new NonMessageAdapter(messageAdapt);
             }
@@ -24,23 +26,27 @@ namespace CougarMessage.Adapter
         {
             var listMessages = schemaFrom.Messages.Select(CreateMessageAdapter).ToList();
             listMessages.ForEach(message => message.BuildMemberAdapters(listMessages));
-            listMessages.ForEach(MessageAdapter.UpdateDependentMessages);
+            listMessages.ForEach(message => message.UpdateDependentMessages());
             listMessages.ForEach(messageAdapter =>
             {
                 try
                 {
                     string strMsgName = messageAdapter.Name;
-                    var listTypeData = ((MessageSchema)schemaFrom).MetaData
-                        .Where(meta => meta.Name.CompareTo(strMsgName) == 0 || meta.Name.CompareTo("*") == 0)
-                        .ToList();
-                    if (listTypeData.Any())
+                    var typeMetaDatas = ((MessageSchema)schemaFrom).MetaData;
+                    if (typeMetaDatas != null)
                     {
-                        var metaData = new TypeMetaData
+                        var listTypeData = typeMetaDatas
+                            .Where(meta => meta.Name.CompareTo(strMsgName) == 0 || meta.Name.CompareTo("*") == 0)
+                            .ToList();
+                        if (listTypeData.Any())
                         {
-                            Name = strMsgName,
-                            MetaMembers = listTypeData.SelectMany(meta => meta.MetaMembers).ToList()
-                        };
-                        messageAdapter.SetMetaData(metaData);
+                            var metaData = new TypeMetaData
+                            {
+                                Name = strMsgName,
+                                MetaMembers = listTypeData.SelectMany(meta => meta.MetaMembers).ToList()
+                            };
+                            messageAdapter.SetMetaData(metaData);
+                        }
                     }
                 }
                 catch (Exception exc)

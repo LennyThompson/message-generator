@@ -55,9 +55,8 @@ namespace CougarMessage.Adapter
 
         public List<EnumValueAdapter> Values => _listEnumValueAdapters;
 
-        public string CSharpEnumFileName => Name + MessageSchemaAdapter.CSHARP_EXT;
+        public string CSharpEnumFileName => Name + ".cs";
 
         public int MaximumEnumLength => Values.Max(adapter => adapter.GetName().Length);
-        }
     }
 }

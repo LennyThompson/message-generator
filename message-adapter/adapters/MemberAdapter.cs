@@ -149,12 +149,12 @@ namespace CougarMessage.Adapter
 
         public DefineAdapter? ArraySizeDefine => m_defineAdapter;
 
-        public MessageAdapter.IDefineAdapter BuildArraySizeDefine(List<IMember> otherMembers)
+        public DefineAdapter? BuildArraySizeDefine(List<IMember> otherMembers)
         {
             if (m_defineAdapter == null && HasArraySizeDefine)
             {
-                m_defineAdapter = CreateDefineAdapter(new Define()
-                    { Name = m_memberAdapt.ArraySize, Value = m_memberAdapt.NumericArraySize });
+                m_defineAdapter = DefineAdapterFactory.CreateDefineAdapter(new Define()
+                    { Name = m_memberAdapt.ArraySize, Value = m_memberAdapt.ArraySize });
                 /*
                 GetMemberName = () => m_memberAdapt.StrippedName(),
                 GetPostFix = () => otherMembers.Any(member => member.StrippedName().Equals(m_memberAdapt.StrippedName() + "Length", StringComparison.OrdinalIgnoreCase)) ? "Max" : ""
@@ -164,18 +164,21 @@ namespace CougarMessage.Adapter
             return ArraySizeDefine;
         }
 
-        public string CppArrayType =>
+        public string CppArrayType
         {
-            if (IsVariableLengthArray => )
+            get
             {
-                return "std::vector";
-            }
-            else if (IsArray => )
-            {
-                return "std::array";
-            }
+                if (IsVariableLengthArray)
+                {
+                    return "std::vector";
+                }
+                else if (IsArray)
+                {
+                    return "std::array";
+                }
 
-            return "";
+                return "";
+            }
         }
 
         public bool GenerateArrayMember
@@ -241,7 +244,7 @@ namespace CougarMessage.Adapter
 
         public bool IsParameterString => TreatAsCppString;
 
-        public bool IsHashString => TreatAsCppString(;
+        public bool IsHashString => TreatAsCppString;
 
         public bool IsFiletime
         {
@@ -387,7 +390,7 @@ namespace CougarMessage.Adapter
         {
             get
             {
-                switch (m_memberAdapt.Type().ToUpper())
+                switch (m_memberAdapt.Type.ToUpper())
                 {
                     case "FLOAT":
                         return "ToFloat";

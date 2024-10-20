@@ -2,6 +2,8 @@ namespace CougarMessage.Adapter;
 
 public class FromJsonAdapter
 {
+    
+                /*
                 GetName = () =>
                 {
                     switch (m_memberAdapt.Type().ToUpper())
@@ -243,5 +245,6 @@ public class FromJsonAdapter
                             return "***Unknown***";
                     }
                 }
+                */
  
 }
