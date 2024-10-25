@@ -38,6 +38,9 @@
       <None Update="assets\SchemaTest.h">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <None Update="assets\variable-sized-string-messages.h">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>
