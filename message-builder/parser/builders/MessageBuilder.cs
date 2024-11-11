@@ -25,12 +25,13 @@ namespace CougarMessage.Parser.Builders
                 _messageBuild.Define = defineMessage;
             }
 
-            _messageBuild.UpdateVariableLengthArray();
-
             foreach (var completer in _listCompleters)
             {
                 completer.DoCompletion(sqlSchema);
             }
+
+            _messageBuild.UpdateVariableLengthArray();
+            _messageBuild.UpdateMessageDependencies();
         }
     }
     

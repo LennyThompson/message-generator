@@ -21,7 +21,7 @@ namespace CougarMessage.Parser.MessageTypes.Interfaces
 
         // Find all members matching the predicate as a member hierarchy
         // The top of each deque will be the left most member
-        bool FindAllMembers(Predicate<IMember> memberTest, List<Queue<IMember>> stackMembers);
+        bool FindAllMembers(Predicate<IMember> memberTest, List<Stack<IMember>> stackMembers);
 
         // Find all members with a message type, matching the predicate as a member hierarchy
         // The top of each deque will be the left most member
@@ -57,6 +57,10 @@ namespace CougarMessage.Parser.MessageTypes.Interfaces
 
         TimestampFilter? TimestampFilter { get; set; }
         bool GetUseTimestampRange(IMessage messageFor);
+
+        List<IMessage>? DependentMessages { get; }
+        public bool AddMessageDependency(IMessage messageDepends);
+        public bool UpdateMessageDependencies();
     }
 }
 

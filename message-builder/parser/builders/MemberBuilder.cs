@@ -29,20 +29,32 @@ namespace CougarMessage.Parser.Builders
                     m_memberBuild.EnumType = enumType;
                 }
             }
-            if (m_memberBuild.IsArray && m_memberBuild.NumericArraySize < 0)
+            if (m_memberBuild.IsArray)
             {
-                IDefine? defineArraySize = messageSchema.Defines
-                    .FirstOrDefault(define => String.Compare(define.Name, m_memberBuild.ArraySize, StringComparison.Ordinal) == 0);
-                if (defineArraySize != null)
+                ArrayMember memberArray = (ArrayMember) m_memberBuild;
+                if (memberArray.NumericArraySize < 0)
                 {
-                    if (defineArraySize is { IsExpression: true, NumericValue: 0 })
+                    IDefine? defineArraySize = messageSchema.Defines
+                        .FirstOrDefault(define =>
+                            String.Compare(define.Name, memberArray.ArraySize, StringComparison.Ordinal) == 0);
+                    if (defineArraySize != null)
                     {
-                        defineArraySize.Evaluate(defName =>
+                        if (defineArraySize is { IsExpression: true, NumericValue: 0 })
                         {
-                            return messageSchema.Defines.FirstOrDefault(def => def.Name == defName);
-                        });
+                            defineArraySize.Evaluate(defName =>
+                            {
+                                return messageSchema.Defines.FirstOrDefault(def => def.Name == defName);
+                            });
+                        }
+
+                        memberArray.ArraySizeDefine = defineArraySize;
                     }
-                    m_memberBuild.ArraySizeDefine = defineArraySize;
+
+                    if (memberArray.IsVariableLengthArray)
+                    {
+                        m_memberBuild = new VariableArrayMember(m_memberBuild, null);
+                    }
+
                 }
             }
             foreach (var completer in _listCompleters)
@@ -98,7 +110,8 @@ namespace CougarMessage.Parser.Builders
                 }
                 else if (builderChild is ArrayDeclareBuilder arrayDeclareBuilder)
                 {
-                    m_memberBuild.ArraySize = arrayDeclareBuilder.ArraySize;
+                    m_memberBuild = new ArrayMember(m_memberBuild);
+                    ((ArrayMember) m_memberBuild).ArraySize = arrayDeclareBuilder.ArraySize;
                     builderChild.Used = true;
                 }
             }

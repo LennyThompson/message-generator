@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 namespace CougarMessage.Metadata
 {
-    public class TypeMetaData
+    public class TypeMetaData : ITypeMetaData
     {
         [JsonPropertyName("name")]
         private string m_strName = "";

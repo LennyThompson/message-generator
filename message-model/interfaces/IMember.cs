@@ -13,14 +13,18 @@ namespace CougarMessage.Parser.MessageTypes.Interfaces
         IMessage? MessageType { get; }
         IEnum? EnumType { get; }
         bool IsArray { get; }
-        bool IsArrayPointer { get; }
-        bool IsVariableLengthArray { get; }
-        string? ArraySize { get; }
-        int NumericArraySize { get; }
         List<IAttribute>? Attributes { get; }
         int OriginalByteSize { get; }
 
         string? ShortFieldDescription { get; }
         string? LongFieldDescription { get; }
+    }
+
+    public interface IArrayMember
+    {
+        bool IsArrayPointer { get; }
+        bool IsVariableLengthArray { get; }
+        string? ArraySize { get; }
+        int NumericArraySize { get; }
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using adapter_interface;
 using CougarMessage.Adapter;
 using CougarMessage.Metadata;
 using CougarMessage.Parser.MessageTypes;
@@ -24,13 +25,12 @@ namespace CougarMessage.Adapter
         string UpdaterFunction { get; }
     }
 
-    public class MemberAdapter
+    public class MemberAdapter : IMemberAdapter
     {
         protected IMember m_memberAdapt;
-        private MessageAdapter m_messageTypeAdapter;
-        private EnumAdapter m_enumTypeAdapter;
         private MemberMetadata m_metaData;
         DefineAdapter? m_defineAdapter = null;
+        ITypeAdapter m_typeAdapter;
 
 
         public void SetMetaData(MemberMetadata metaData, bool bForce)
@@ -48,14 +48,10 @@ namespace CougarMessage.Adapter
             }
         }
 
-        public MemberAdapter(IMember memberAdapt, List<MessageAdapter> listMessages)
+        public MemberAdapter(IMember memberAdapt, ITypeAdapter typeAdapter)
         {
             m_memberAdapt = memberAdapt;
-            if (HasMessageType)
-            {
-                m_messageTypeAdapter = listMessages.FirstOrDefault(message =>
-                    message.Name.Equals(m_memberAdapt.Type, StringComparison.OrdinalIgnoreCase));
-            }
+            m_typeAdapter = typeAdapter;
         }
 
         public string Name => m_memberAdapt.Name;
@@ -65,36 +61,36 @@ namespace CougarMessage.Adapter
 
         public bool HasEnumType => m_memberAdapt.EnumType != null;
 
-        public MessageAdapter MessageType
+        public IMessageAdapter? MessageType
         {
             get
             {
-                if (HasMessageType && m_messageTypeAdapter == null)
+                if (m_typeAdapter.HasMessageType)
                 {
-                    m_messageTypeAdapter = MessageAdapterFactory.CreateMessageAdapter(m_memberAdapt.MessageType);
+                    return m_typeAdapter.MessageAdapter;
                 }
 
-                return m_messageTypeAdapter;
+                return null;
             }
         }
 
-        public EnumAdapter EnumType
+        public IEnumAdapter? EnumType
         {
             get
             {
-                if (HasEnumType && m_enumTypeAdapter == null)
+                if (m_typeAdapter.HasEnumType)
                 {
-                    m_enumTypeAdapter = new EnumAdapter(m_memberAdapt.EnumType);
+                    return m_typeAdapter.EnumAdapter;
                 }
 
-                return m_enumTypeAdapter;
+                return null;
             }
         }
 
         public bool HasFieldDescriptionAttribute =>
             m_memberAdapt.Attributes?.Count > 0 && m_memberAdapt.Attributes[0] is IFielddescAttribute;
 
-        public FieldDescriptionAttributeAdapter? FieldDescriptionAttribute
+        public IAttributeAdapter? FieldDescriptionAttribute
         {
             get
             {
@@ -126,15 +122,7 @@ namespace CougarMessage.Adapter
         {
             get
             {
-                switch (m_memberAdapt.Type.ToUpper())
-                {
-                    case "CHAR":
-                        return false;
-                    default:
-                        break;
-                }
-
-                return m_memberAdapt.IsArray;
+                return m_typeAdapter.IsArray;
             }
         }
 
@@ -142,7 +130,7 @@ namespace CougarMessage.Adapter
 
         public bool IsArrayPointer => m_memberAdapt.IsArrayPointer;
 
-        public bool IsVariableLengthArray => false;
+        public bool IsVariableLengthArray => m_typeAdapter.IsVariableLengthArray;
 
         public bool HasArraySizeDefine => m_memberAdapt.IsArray && !m_memberAdapt.IsVariableLengthArray &&
                                           !string.IsNullOrEmpty(m_memberAdapt.ArraySize);
@@ -177,7 +165,7 @@ namespace CougarMessage.Adapter
                     return "std::array";
                 }
 
-                return "";
+                return m_typeAdapter.ArrayType;
             }
         }
 

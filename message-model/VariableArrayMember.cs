@@ -6,104 +6,36 @@ using CougarMessage.Parser.MessageTypes.Interfaces;
 
 namespace CougarMessage.Parser.MessageTypes
 {
-    public class VariableArrayMember(IMember memberArray, IMember? memberArraySize) : IVariableArrayMember
+    public class VariableArrayMember : ArrayMember, IVariableArrayMember
     {
-        public IMember? ArraySizeMember
+        private IMember? m_memberArraySize;
+        public VariableArrayMember(Member memberFrom, IMember? memberArraySize) 
+            : base(memberFrom)
         {
-            get => memberArraySize;
+            m_memberArraySize = memberArraySize;
         }
 
-        public IMember ArrayMember
+        public IMember? ArraySizeMember
         {
-            get => memberArray;
+            get => m_memberArraySize;
+            set => m_memberArraySize = value;
         }
 
         public bool IsUnknownSize
         {
-            get => memberArraySize?.Name == Message.ERROR_ARRAY_SIZE_MEMBER;
+            get => m_memberArraySize?.Name == Message.ERROR_ARRAY_SIZE_MEMBER;
         }
 
-        public string Name
-        {
-            get => memberArray.Name;
-        }
-
-        public string ShortName
-        {
-            get => memberArray.ShortName;
-        }
-
-        public string StrippedName
-        {
-            get => memberArray.StrippedName;
-            set => memberArray.StrippedName = value;
-        }
-
-        public string? Prefix
-        {
-            get => memberArray.Prefix;
-        }
-
-        public string Type
-        {
-            get => memberArray.Type;
-        }
-
-        public IMessage? MessageType
-        {
-            get => memberArray.MessageType;
-        }
-
-        public IEnum? EnumType
-        {
-            get => memberArray.EnumType;
-        }
-
-        public bool IsArray
+        public new bool IsVariableLengthArray
         {
             get => true;
         }
 
-        public bool IsArrayPointer
-        {
-            get => memberArray.IsArrayPointer;
-        }
-
-        public bool IsVariableLengthArray
-        {
-            get => true;
-        }
-
-        public string ArraySize
-        {
-            get => memberArray.ArraySize!;
-        }
-
-        public int NumericArraySize
+        public new int NumericArraySize
         {
             get => 1;
         }
 
-        public List<IAttribute>? Attributes
-        {
-            get => memberArray.Attributes;
-        }
-
-        public int OriginalByteSize
-        {
-            // We can't possibly know this...
-            get => memberArray.OriginalByteSize;
-        }
-
-        public string? ShortFieldDescription
-        {
-            get => memberArray.ShortFieldDescription;
-        }
-
-        public string? LongFieldDescription
-        {
-            get => memberArray.LongFieldDescription;
-        }
     }
 }
 

@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using adapter_interface;
 using CougarMessage.Parser.MessageTypes.Interfaces;
 
 namespace CougarMessage.Adapter
 {
-    public class AttributeAdapter
+
+    public class AttributeAdapter : IAttributeAdapter
     {
         protected IAttribute _attrAdapt;
 

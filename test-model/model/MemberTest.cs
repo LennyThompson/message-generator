@@ -167,4 +167,14 @@ public class MemberTest
         Assert.That(variableMember.ArraySizeMember.Name, Is.EqualTo("m_dwLength"));
         Assert.That(variableMember.ArraySizeMember.Type, Is.EqualTo("DWORD"));
     }
+
+    [Test]
+    public void TestPrefixExtraction()
+    {
+        Member member = new Member();
+        member.Type = "EPatronMembershipStatus";
+        member.Name = "m_memberStatus";
+        Assert.That(member.Prefix, Is.EqualTo("member"));
+        
+    }
 }

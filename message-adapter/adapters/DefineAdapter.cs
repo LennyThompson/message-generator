@@ -1,9 +1,10 @@
 using System.Text.Json;
+using adapter_interface;
 using CougarMessage.Parser.MessageTypes.Interfaces;
 
 namespace CougarMessage.Adapter
 {
-    public class DefineAdapter
+    public class DefineAdapter : IDefineAdapter
     {
         private readonly IDefine _defineAdapt;
 

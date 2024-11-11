@@ -16,6 +16,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "message-adapter", "message-
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "test-adapters", "test-adapters\test-adapters.csproj", "{C0CDD91D-28C0-48EC-84EA-B981381E9315}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "file-logger", "file-logger\file-logger.csproj", "{0B34E936-03D5-4FD5-A4E3-0568401FBF11}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "adapter-interface", "adapter-interface\adapter-interface.csproj", "{9C0C4BA7-204C-41E1-8809-35A3BFBE43BA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -54,5 +58,13 @@ Global
 		{C0CDD91D-28C0-48EC-84EA-B981381E9315}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C0CDD91D-28C0-48EC-84EA-B981381E9315}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C0CDD91D-28C0-48EC-84EA-B981381E9315}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0B34E936-03D5-4FD5-A4E3-0568401FBF11}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0B34E936-03D5-4FD5-A4E3-0568401FBF11}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0B34E936-03D5-4FD5-A4E3-0568401FBF11}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0B34E936-03D5-4FD5-A4E3-0568401FBF11}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9C0C4BA7-204C-41E1-8809-35A3BFBE43BA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9C0C4BA7-204C-41E1-8809-35A3BFBE43BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9C0C4BA7-204C-41E1-8809-35A3BFBE43BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9C0C4BA7-204C-41E1-8809-35A3BFBE43BA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

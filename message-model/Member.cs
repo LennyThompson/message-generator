@@ -15,33 +15,14 @@ namespace CougarMessage.Parser.MessageTypes
             FIELDDESC
         }
 
-        private const string DYNAMIC_ARRAY_SIZE = "JTP_VARIABLE_SIZE_ARRAY";
         private const string MEMBER_PREFIX = "m_";
         private string m_strName = "";
         private string m_strStrippedName = "";
         private string m_strType = "";
         private IMessage? m_messageType;
         private IEnum? m_enumType;
-        private IDefine? m_defineArraySize;
 
-        private bool m_bIsArray;
-        private bool m_bIsArrayPointer = false;
-        private string? m_strArraySize;
-        private int m_nArraySize;
         private Dictionary<string, IAttribute>? m_mapAttributes;
-
-        public IDefine? ArraySizeDefine
-        {
-            get => m_defineArraySize;
-            set
-            {
-                m_defineArraySize = value;
-                if (m_defineArraySize?.IsNumeric ?? false)
-                {
-                    m_nArraySize = m_defineArraySize.NumericValue;
-                }
-            }
-        }
 
         public void AddAttribute(IAttribute attrAdd)
         {
@@ -99,8 +80,11 @@ namespace CougarMessage.Parser.MessageTypes
 
         public string? Prefix
         {
-            get => ShortName.Split(new[] { " " }, StringSplitOptions.RemoveEmptyEntries)
-                .FirstOrDefault(part => char.IsLower(part[0]));
+            get
+            {
+                return Regex.Split(ShortName, @"(?=[A-Z])")
+                    .FirstOrDefault(part => char.IsLower(part[0]));
+            }
         }
 
         public string Type
@@ -121,68 +105,7 @@ namespace CougarMessage.Parser.MessageTypes
             set => m_enumType = value;
         }
 
-        public bool IsArray
-        {
-            get => m_bIsArray;
-        }
-
-        public bool IsArrayPointer
-        {
-            get => m_bIsArrayPointer;
-        }
-
-        public bool IsVariableLengthArray
-        {
-            get => IsArray && NumericArraySize == 1;
-        }
-
-        public string? ArraySize
-        {
-            get => m_strArraySize;
-            set => SetArraySize(value);
-        }
-
-        private void SetArraySize(string? strSize)
-        {
-            if (strSize != null)
-            {
-                m_strArraySize = strSize;
-                m_nArraySize = -1;
-                try
-                {
-                    m_nArraySize = int.Parse(m_strArraySize);
-                }
-                catch (Exception)
-                {
-                    if (String.Compare(m_strArraySize!, DYNAMIC_ARRAY_SIZE, StringComparison.Ordinal) == 0)
-                    {
-                        m_nArraySize = 1;
-                    }
-                }
-
-                if (m_nArraySize < 0)
-                {
-                    try
-                    {
-                        m_nArraySize = m_strArraySize.Split('+')
-                            .Select(int.Parse)
-                            .Sum();
-                    }
-                    catch (Exception)
-                    {
-                    }
-                }
-
-                m_bIsArrayPointer = true;
-                m_bIsArray = true;
-            }
-        }
-
-
-        public int NumericArraySize
-        {
-            get => m_nArraySize;
-        }
+        public bool IsArray => false;
 
         public List<IAttribute>? Attributes
         {
@@ -255,11 +178,6 @@ namespace CougarMessage.Parser.MessageTypes
                         }
 
                         break;
-                }
-
-                if (IsArray)
-                {
-                    nSizeReturn *= NumericArraySize;
                 }
 
                 return nSizeReturn;
@@ -404,16 +322,9 @@ namespace CougarMessage.Parser.MessageTypes
 
         public void UpdateName(IMessage msg)
         {
-            if (StrippedName.CompareTo(msg.BaseName) == 0)
+            if (StrippedName == msg.BaseName)
             {
-                if (IsArray)
-                {
-                    StrippedName = StrippedName + "Array";
-                }
-                else
-                {
-                    StrippedName = StrippedName + "Var";
-                }
+                StrippedName = StrippedName + "Var";
             }
         }
     }

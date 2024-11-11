@@ -12,18 +12,6 @@ public class SimpleMessageSource
     }
 }
 
-public class ExtendedMessageSource
-{
-    public static IEnumerable<string> TestSourceCode
-    {
-        get
-        {
-            using TextReader reader = new StreamReader("assets/ExtendedMessage.h");
-            yield return reader.ReadToEnd();
-        }
-    }
-}
-
 public class CombinedMessageSource
 {
     public static IEnumerable<string> TestSourceCode

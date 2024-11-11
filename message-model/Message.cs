@@ -15,6 +15,7 @@ namespace CougarMessage.Parser.MessageTypes
         private Dictionary<string, IAttribute>? m_mapAttributes;
         private List<IMember> m_listMembers = new();
         private IDefine? m_defineMessage;
+        private List<IMessage>? m_listDependentMessages;
         private List<IMessage>? m_listGenerated;
         private List<TraceAssociation>? m_listTraceMembers;
         private TimestampFilter? m_timestampFilter;
@@ -44,7 +45,7 @@ namespace CougarMessage.Parser.MessageTypes
 
         public bool HasVariableLengthArrayMember
         {
-            get => Members.LastOrDefault(member => member.IsVariableLengthArray) != null;
+            get => Members.LastOrDefault(member => member.IsArray && ((ArrayMember) member).IsVariableLengthArray) != null;
         }
 
         public void UpdateVariableLengthArray()
@@ -61,7 +62,7 @@ namespace CougarMessage.Parser.MessageTypes
                         {
                             if (member.Name.Contains(name))
                             {
-                                m_listMembers[^1] = new VariableArrayMember(memberLast, member);
+                                ((VariableArrayMember) m_listMembers[^1]).ArraySizeMember = member;
                                 return;
                             }
                         }
@@ -69,7 +70,7 @@ namespace CougarMessage.Parser.MessageTypes
                     IMember memberError = new Member();
                     ((Member) memberError).Name = ERROR_ARRAY_SIZE_MEMBER;
                     ((Member) memberError).Type = ERROR_ARRAY_SIZE_MEMBER;
-                    m_listMembers[^1] = new VariableArrayMember(memberLast, memberError);
+                    ((VariableArrayMember) m_listMembers[^1]).ArraySizeMember = memberError;
                 }
                 else if (!memberLast.IsArray && memberLast.Type.ToUpper() == "CHAR" && m_listMembers.Count > 1)
                 {
@@ -78,7 +79,7 @@ namespace CougarMessage.Parser.MessageTypes
                     {
                         if (member.Name.Contains(name))
                         {
-                            m_listMembers[^1] = new VariableArrayMember(memberLast, member);
+                            ((VariableArrayMember) m_listMembers[^1]).ArraySizeMember = member;
                             return;
                         }
                     }
@@ -197,17 +198,17 @@ namespace CougarMessage.Parser.MessageTypes
             );
         }
 
-        public bool FindAllMembers(Predicate<IMember> memberTest, List<Queue<IMember>> listMembers)
+        public bool FindAllMembers(Predicate<IMember> memberTest, List<Stack<IMember>> listMembers)
         {
 
             Members
                 .Where(member => member.MessageType != null)
                 .ToList().ForEach(member =>
             {
-                List<Queue<IMember>> listLocalMembers = new List<Queue<IMember>>();
+                List<Stack<IMember>> listLocalMembers = new List<Stack<IMember>>();
                 if (member.MessageType?.FindAllMembers(memberTest, listLocalMembers) ?? false)
                 {
-                    listLocalMembers.ForEach(stack => stack.Enqueue(member));
+                    listLocalMembers.ForEach(stack => stack.Push(member));
                     listMembers.AddRange(listLocalMembers);
                 }
             });
@@ -215,8 +216,8 @@ namespace CougarMessage.Parser.MessageTypes
             IMember? memberLocal = Members.FirstOrDefault(member => memberTest(member));
             if (memberLocal != null)
             {
-                Queue<IMember> memberStack = new Queue<IMember>();
-                memberStack.Enqueue(memberLocal);
+                Stack<IMember> memberStack = new Stack<IMember>();
+                memberStack.Push(memberLocal);
                 listMembers.Add(memberStack);
             }
             return listMembers.Count > 0;
@@ -550,6 +551,30 @@ namespace CougarMessage.Parser.MessageTypes
         private bool HasValidAttribute(string strAttrKey, int nIndex)
         {
             return (m_mapAttributes?.ContainsKey(strAttrKey) ?? false) && m_mapAttributes[strAttrKey].Values.Count > nIndex ;
+        }
+
+        public List<IMessage>? DependentMessages => m_listDependentMessages;
+        public bool AddMessageDependency(IMessage messageDepends)
+        {
+            if (m_listDependentMessages == null)
+            {
+                m_listDependentMessages = new();
+                m_listDependentMessages.Add(messageDepends);
+            }
+            else if (!m_listDependentMessages.Contains(messageDepends))
+            {
+                m_listDependentMessages.Add(messageDepends);
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool UpdateMessageDependencies()
+        {
+            m_listMembers.Where(member => member.MessageType != null).ToList().ForEach(member => member.MessageType!.AddMessageDependency(this));
+            return true;
+
         }
     }
 }

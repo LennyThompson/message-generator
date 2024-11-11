@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\adapter-interface\adapter-interface.csproj" />
       <ProjectReference Include="..\message-generator\message-generator.csproj" />
       <ProjectReference Include="..\message-model\message-model.csproj" />
     </ItemGroup>

@@ -4,23 +4,23 @@ using System.Linq;
 using System.Text.Json;
 using System.Collections.Concurrent;
 using System.Threading;
+using adapter_interface;
 using Cougar.Utils;
-using CougarMessage.Adapter;
 using CougarMessage.Metadata;
 using CougarMessage.Parser.MessageTypes;
 using CougarMessage.Parser.MessageTypes.Interfaces;
 
 namespace CougarMessage.Adapter
 {
-    public class MessageAdapter
+    public class MessageAdapter : IMessageAdapter
     {
         protected IMessage m_messageAdapt;
         protected DefineAdapter m_defineAdapt;
 
         protected TypeMetaData m_typeData;
-        List<MemberAdapter> m_listMembers;
+        List<IMemberAdapter> m_listMembers;
 
-        List<MessageAdapter> m_listDependentMessages;
+        List<IMessageAdapter> m_listDependentMessages;
 
         private static string SITE_ID = "Site ID";
         private static string SITE_ID_MEMBER = "m_usSiteID";
@@ -41,7 +41,7 @@ namespace CougarMessage.Adapter
             {
                 m_defineAdapt = DefineAdapterFactory.CreateDefineAdapter(messageAdapt.Define);
             }
-            m_listDependentMessages = new List<MessageAdapter>();
+            m_listDependentMessages = new List<IMessageAdapter>();
         }
 
         public bool BuildMemberAdapters(List<MessageAdapter> listMessages)
@@ -56,13 +56,13 @@ namespace CougarMessage.Adapter
 
         public string LowerSnakeName => SnakeCaser.GetSnakeCase(PlainName);
 
-        public List<MemberAdapter> Members => m_listMembers;
+        public List<IMemberAdapter> Members => m_listMembers;
 
         public int MembersCount => m_listMembers.Count;
 
-        public List<MemberAdapter> ArrayMembers => m_listMembers.Where(member => member.IsArray).ToList();
+        public List<IMemberAdapter> ArrayMembers => m_listMembers.Where(member => member.IsArray).ToList();
 
-        public List<MemberAdapter> NonArrayMembers => m_listMembers.Where(member => !member.IsArray).ToList();
+        public List<IMemberAdapter> NonArrayMembers => m_listMembers.Where(member => !member.IsArray).ToList();
 
         public bool HasArrayMember => m_listMembers.Any(member => member.IsArray);
 
@@ -74,7 +74,7 @@ namespace CougarMessage.Adapter
             return true;
         }
 
-        public List<MessageAdapter> DependentMessages => m_listDependentMessages;
+        public List<IMessageAdapter> DependentMessages => m_listDependentMessages;
 
         public void AddDependentMessage(MessageAdapter dependentMessage)
         {
@@ -95,7 +95,7 @@ namespace CougarMessage.Adapter
             return false;
         }
 
-        public List<MessageAdapter> MessageTypeDependencies
+        public List<IMessageAdapter> MessageTypeDependencies
         {
             get
             {
@@ -105,7 +105,7 @@ namespace CougarMessage.Adapter
                         .Select(member => member.MessageType).ToList();
                 }
 
-                return new List<MessageAdapter>();
+                return new List<IMessageAdapter>();
             }
         }
 
@@ -115,13 +115,13 @@ namespace CougarMessage.Adapter
 
         public bool HasFileTimeMembers => m_listMembers.Any(member => member.IsFiletime);
 
-        public List<MemberAdapter> FileTimeMembers => m_listMembers.Where(member => member.IsFiletime).ToList();
+        public List<IMemberAdapter> FileTimeMembers => m_listMembers.Where(member => member.IsFiletime).ToList();
 
         public string PlainName => m_messageAdapt.BaseName;
 
         public bool HasDefine =>m_defineAdapt != null;
 
-        public DefineAdapter Define => m_defineAdapt;
+        public IDefineAdapter Define => m_defineAdapt;
 
         public bool HasNumericDefine => HasDefine  && Define.HasNumericValue;
 
@@ -189,15 +189,15 @@ namespace CougarMessage.Adapter
 
         public bool HasSiteIdMember => HasMember(SITE_ID, SITE_ID_MEMBER);
 
-        public List<MemberAdapter> SiteIdMember => GetMemberByName(SITE_ID, SITE_ID_MEMBER);
+        public List<IMemberAdapter> SiteIdMember => GetMemberByName(SITE_ID, SITE_ID_MEMBER);
 
         public bool HasCssSiteIdMember => HasMember(CSS_SITE_ID, CSS_SITE_ID_MEMBER);
 
-        public List<MemberAdapter> CssSiteIdMember => GetMemberByName(CSS_SITE_ID, CSS_SITE_ID_MEMBER);
+        public List<IMemberAdapter> CssSiteIdMember => GetMemberByName(CSS_SITE_ID, CSS_SITE_ID_MEMBER);
 
         public bool HasCardIdMember => HasMember(CARD_ID, CARD_ID_MEMBER);
 
-        public List<MemberAdapter> CardIdMember => GetMemberByName(CARD_ID, CARD_ID_MEMBER);
+        public List<IMemberAdapter> CardIdMember => GetMemberByName(CARD_ID, CARD_ID_MEMBER);
 
         public bool HasMember(string strDescription, string strName)
         {
@@ -254,7 +254,7 @@ namespace CougarMessage.Adapter
             }
         }
 
-        public List<MemberAdapter?> EgmSerialNumberMember
+        public List<IMemberAdapter?> EgmSerialNumberMember
         {
             get
             {
@@ -275,9 +275,9 @@ namespace CougarMessage.Adapter
         
         public bool HasVariableLengthArraySizeMember => m_listMembers.Any(member => (member.IsVariableLengthArray && ((VariableArrayMemberAdapter)member).HasSizeMember) || (member.HasMessageType && member.MessageType.HasVariableLengthArraySizeMember));
 
-        public MemberAdapter VariableLengthArrayMember => m_listMembers.FirstOrDefault(member => member.IsVariableLengthArray);
+        public IMemberAdapter? VariableLengthArrayMember => m_listMembers.FirstOrDefault(member => member.IsVariableLengthArray);
 
-        public MemberAdapter AnyVariableLengthArrayMember
+        public IMemberAdapter? AnyVariableLengthArrayMember
         {
             get
             {
@@ -300,7 +300,7 @@ namespace CougarMessage.Adapter
             }
         }
 
-        public List<MemberAdapter> VariableLengthArrayMemberPath
+        public List<IMemberAdapter> VariableLengthArrayMemberPath
         {
             get
             {
@@ -325,12 +325,12 @@ namespace CougarMessage.Adapter
                     return listMembers;
                 }
 
-                return new List<MemberAdapter>();
+                return new List<IMemberAdapter>();
 
             }
         }
 
-        public List<MemberAdapter> VariableLengthArraySizeMemberPath
+        public List<IMemberAdapter> VariableLengthArraySizeMemberPath
         {
             get
             {
@@ -355,17 +355,17 @@ namespace CougarMessage.Adapter
                     return listMembers;
                 }
 
-                return new List<MemberAdapter>();
+                return new List<IMemberAdapter>();
             }
         }
 
         public bool HasMemberWithVariableLengthArrayMember => m_listMembers.Any(member => member.HasMessageType && member.MessageType.HasVariableLengthArrayMember);
 
-        public MemberAdapter MemberWithVariableLengthArrayMember => m_listMembers.FirstOrDefault(member => member.HasMessageType && member.MessageType.HasVariableLengthArrayMember);
+        public IMemberAdapter MemberWithVariableLengthArrayMember => m_listMembers.FirstOrDefault(member => member.HasMessageType && member.MessageType.HasVariableLengthArrayMember);
 
-        public List<MessageAdapter> TypeDependencies => m_listMembers.Where(member => member.HasMessageType).Select(member => member.MessageType).DistinctBy(message => message.Name).ToList();
+        public List<IMessageAdapter> TypeDependencies => m_listMembers.Where(member => member.HasMessageType).Select(member => member.MessageType).DistinctBy(message => message.Name).ToList();
 
-        public List<EnumAdapter> EnumDependencies => m_listMembers.Where(member => member.HasEnumType).Select(member => member.EnumType).DistinctBy(enumAdapter => enumAdapter.Name).ToList();
+        public List<IEnumAdapter> EnumDependencies => m_listMembers.Where(member => member.HasEnumType).Select(member => member.EnumType).DistinctBy(enumAdapter => enumAdapter.Name).ToList();
 
         public bool HasStrippedNameMemberClash =>  m_messageAdapt.HasStrippedNameMemberClash;
 
@@ -574,14 +574,14 @@ namespace CougarMessage.Adapter
 
         public string JavaInterfaceName => "I" + PlainName;
 
-        public List<DefineAdapter> MemberDefines => Members
+        public List<IDefineAdapter> MemberDefines => Members
                 .Where(member => member.HasArraySizeDefine)
                 .Select(member => member.BuildArraySizeDefine(m_messageAdapt.Members))
                 .ToList();
 
         public bool HasGeneratedMessages => m_messageAdapt.GeneratedMessages.Any();
 
-        public List<MessageAdapter> GeneratedMessages => m_messageAdapt.GeneratedMessages
+        public List<IMessageAdapter> GeneratedMessages => m_messageAdapt.GeneratedMessages
                 .Select(MessageAdapterFactory.CreateMessageAdapter)
                 .ToList();
 
@@ -609,7 +609,7 @@ namespace CougarMessage.Adapter
 
         public bool HasExternalKey => m_messageAdapt.ExternalKey != null;
 
-        public ExternalKeyAdapter ExternalKeyAdapter => new ExternalKeyAdapter(this);
+        public IExternalKeyAdapter ExternalKeyAdapter => new ExternalKeyAdapter(this);
 
         public bool HasAdditionalAttribute => m_typeData.AdditionalAttr != null;
 
